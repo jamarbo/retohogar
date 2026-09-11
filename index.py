@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reto del Hogar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-start p-4">
+    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700 relative">
+        <h1 class="text-2xl font-bold text-center mb-6 text-amber-400">🧹 Reto del Hogar</h1>
+        
+        <!-- Pestañas -->
+        <div class="flex rounded-lg bg-slate-700 p-1 mb-6">
+            <button onclick="switchTab('task')" id="btn-task" class="flex-1 py-2 rounded-md font-medium text-sm transition text-slate-300">⚡ Tarea</button>
+            <button onclick="switchTab('podium')" id="btn-podium" class="flex-1 py-2 rounded-md font-medium text-sm transition bg-amber-500 text-slate-900 shadow">🏆 Podio en Vivo</button>
+        </div>
+
+        <!-- Sección Tarea -->
+        <div id="section-task" class="space-y-4 hidden">
+            <div>
+                <label class="block text-sm font-medium mb-1 text-slate-300">Integrante:</label>
+                <select id="user_name" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-amber-500">
+                    <option value="Jaiver Martínez">Jaiver Martínez</option>
+                    <option value="Gabriela">Gabriela</option>
+                    <option value="Valeria">Valeria</option>
+                    <option value="Elizabeth Parra">Elizabeth Parra</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1 text-slate-300">Seleccionar Tarea:</label>
+                <select id="task_name" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-amber-500">
+                    <option value="Limpiar las cacas / arenero">Limpiar las cacas / arenero (200 pts)</option>
+                    <option value="Trapear los baños">Trapear los baños (180 pts)</option>
+                    <option value="Hacer la comida">Hacer la comida (150 pts)</option>
+                    <option value="Lavar los platos">Lavar los platos (150 pts)</option>
+                    <option value="Doblar la ropa dentro de los clósets">Doblar la ropa dentro de los clósets (140 pts)</option>
+                    <option value="Sacar la ropa de la lavadora">Sacar la ropa de la lavadora (120 pts)</option>
+                    <option value="Echar ropa a la lavadora">Echar ropa a la lavadora (110 pts)</option>
+                    <option value="Botar la basura">Botar la basura (100 pts)</option>
+                    <option value="Lavar la nevera">Lavar la nevera (90 pts)</option>
+                    <option value="Trapear la sala">Trapear la sala (80 pts)</option>
+                    <option value="Trapear las habitaciones">Trapear las habitaciones (80 pts)</option>
+                    <option value="Colgar la ropa a secar">Colgar la ropa a secar (70 pts)</option>
+                    <option value="Barrer la sala">Barrer la sala (60 pts)</option>
+                    <option value="Barrer las habitaciones">Barrer las habitaciones (60 pts)</option>
+                    <option value="Limpiar los espejos">Limpiar los espejos (50 pts)</option>
+                    <option value="Limpiar el polvo de muebles">Limpiar el polvo de muebles (50 pts)</option>
+                    <option value="Tender la cama">Tender la cama (40 pts)</option>
+                </select>
+            </div>
+
+            <!-- Paso 1: Foto Inicial -->
+            <div id="step-1" class="space-y-3 pt-2">
+                <label class="block text-sm font-medium text-amber-300">📸 Paso 1: Foto ANTES de empezar</label>
+                <input type="file" id="before_photo" accept="image/*" capture="environment" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-500 file:text-slate-900 hover:file:bg-amber-600">
+                <button onclick="startTask()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-3 rounded-lg transition shadow-lg">Iniciar Tarea</button>
+            </div>
+
+            <!-- Paso 2: Foto Final -->
+            <div id="step-2" class="space-y-3 pt-2 hidden">
+                <div class="p-3 bg-slate-900 rounded-lg border border-amber-500/30 text-sm text-amber-300 text-center">
+                    ⏱️ Tarea en curso... Realiza la labor y toma la foto final.
+                </div>
+                <label class="block text-sm font-medium text-amber-300">🏁 Paso 2: Foto DESPUÉS de terminar</label>
+                <input type="file" id="after_photo" accept="image/*" capture="environment" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-500 file:text-slate-900 hover:file:bg-emerald-600">
+                <button onclick="finishTask()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold py-3 rounded-lg transition shadow-lg">Finalizar y Calificar con IA</button>
+            </div>
+
+            <!-- Resultado de la IA -->
+            <div id="result-box" class="hidden mt-6 p-4 bg-slate-900 rounded-xl border border-slate-700 space-y-2">
+                <h3 class="font-bold text-amber-400 text-lg">⚖️ Veredicto de la IA</h3>
+                <p id="res-user" class="text-sm"></p>
+                <p id="res-duration" class="text-sm"></p>
+                <p id="res-status" class="text-sm font-semibold"></p>
+                <p id="res-points" class="text-sm font-bold text-amber-300"></p>
+                <p id="res-obs" class="text-xs text-slate-300 italic bg-slate-800 p-2 rounded"></p>
+                <div class="flex gap-2 pt-2">
+                    <a id="link-before" href="#" target="_blank" class="flex-1 text-center bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded transition">Ver Inicio</a>
+                    <a id="link-after" href="#" target="_blank" class="flex-1 text-center bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded transition">Ver Final</a>
+                </div>
+                <button onclick="resetApp()" class="w-full mt-2 bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded transition">Hacer otra tarea</button>
+            </div>
+        </div>
+
+        <!-- Sección Podio Real -->
+        <div id="section-podium" class="space-y-4">
+            <div class="flex justify-center gap-2 mb-4">
+                <button onclick="loadLeaderboard('hoy')" id="p-hoy" class="px-3 py-1 bg-slate-700 text-slate-300 text-xs rounded-full">Hoy</button>
+                <button onclick="loadLeaderboard('semana')" id="p-semana" class="px-3 py-1 bg-amber-500 text-slate-900 font-bold text-xs rounded-full shadow">Esta Semana</button>
+                <button onclick="loadLeaderboard('mes')" id="p-mes" class="px-3 py-1 bg-slate-700 text-slate-300 text-xs rounded-full">Este Mes</button>
+            </div>
+
+            <div id="podium-content" class="space-y-3">
+                <!-- Se renderiza por JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalle de Tareas del Usuario -->
+    <div id="modal-detalle" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-lg rounded-2xl p-5 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+                <h2 id="modal-title" class="text-lg font-bold text-amber-400">Detalle de Tareas</h2>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+            </div>
+            <div id="modal-body" class="overflow-y-auto space-y-4 pr-1 flex-1">
+                <!-- Tarjetas de tareas individuales -->
+            </div>
+            <button onclick="closeModal()" class="mt-4 w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium py-2.5 rounded-xl text-sm transition">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSessionId = null;
+        let globalPeriodo = 'semana';
+
+        function switchTab(tab, periodo = 'semana') {
+            if(tab === 'task') {
+                document.getElementById('section-task').classList.remove('hidden');
+                document.getElementById('section-podium').classList.add('hidden');
+                document.getElementById('btn-task').className = "flex-1 py-2 rounded-md font-medium text-sm transition bg-amber-500 text-slate-900 shadow";
+                document.getElementById('btn-podium').className = "flex-1 py-2 rounded-md font-medium text-sm transition text-slate-300";
+            } else {
+                document.getElementById('section-task').classList.add('hidden');
+                document.getElementById('section-podium').classList.remove('hidden');
+                document.getElementById('btn-podium').className = "flex-1 py-2 rounded-md font-medium text-sm transition bg-amber-500 text-slate-900 shadow";
+                document.getElementById('btn-task').className = "flex-1 py-2 rounded-md font-medium text-sm transition text-slate-300";
+                globalPeriodo = periodo;
+                loadLeaderboard(periodo);
+            }
+        }
+
+        async function startTask() {
+            const userName = document.getElementById('user_name').value;
+            const taskName = document.getElementById('task_name').value;
+            const photoInput = document.getElementById('before_photo');
+
+            if(photoInput.files.length === 0) {
+                alert("Por favor toma o selecciona la foto inicial.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("user_name", userName);
+            formData.append("task_name", taskName);
+            formData.append("before_photo", photoInput.files[0]);
+
+            const btn = event.target;
+            btn.innerText = "Subiendo evidencia inicial...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/start-task', { method: 'POST', body: formData });
+                const data = await res.json();
+                if(data.status === "started") {
+                    currentSessionId = data.session_id;
+                    document.getElementById('step-1').classList.add('hidden');
+                    document.getElementById('step-2').classList.remove('hidden');
+                } else {
+                    alert("Error: " + data.message);
+                    btn.innerText = "Iniciar Tarea";
+                    btn.disabled = false;
+                }
+            } catch(e) {
+                alert("Error de conexión: " + e);
+                btn.innerText = "Iniciar Tarea";
+                btn.disabled = false;
+            }
+        }
+
+        async function finishTask() {
+            const photoInput = document.getElementById('after_photo');
+            if(photoInput.files.length === 0) {
+                alert("Por favor toma o selecciona la foto final.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("session_id", currentSessionId);
+            formData.append("after_photo", photoInput.files[0]);
+
+            const btn = event.target;
+            btn.innerText = "Analizando con Gemini y guardando...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/finish-task', { method: 'POST', body: formData });
+                const data = await res.json();
+                if(data.status === "finished") {
+                    document.getElementById('step-2').classList.add('hidden');
+                    document.getElementById('result-box').classList.remove('hidden');
+
+                    document.getElementById('res-user').innerText = `👤 Responsable: ${data.user_name}`;
+                    document.getElementById('res-duration').innerText = `⏱️ Duración: ${data.duration_minutes} min`;
+                    document.getElementById('res-status').innerText = `✅ Completado: ${data.completado ? 'Sí' : 'No'}`;
+                    document.getElementById('res-points').innerText = `⭐ Puntos obtenidos: +${data.puntos} / ${data.max_points}`;
+                    document.getElementById('res-obs').innerText = `📝 Observaciones: ${data.observaciones}`;
+                    
+                    document.getElementById('link-before').href = data.before_url;
+                    document.getElementById('link-after').href = data.after_url;
+                } else {
+                    alert("Error al finalizar: " + (data.message || "Desconocido"));
+                    btn.innerText = "Finalizar y Calificar con IA";
+                    btn.disabled = false;
+                }
+            } catch(e) {
+                alert("Error crítico: " + e);
+                btn.innerText = "Finalizar y Calificar con IA";
+                btn.disabled = false;
+            }
+        }
+
+        function resetApp() {
+            currentSessionId = null;
+            document.getElementById('result-box').classList.add('hidden');
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('step-1').classList.remove('hidden');
+            document.getElementById('before_photo').value = "";
+            document.getElementById('after_photo').value = "";
+            const btn1 = document.querySelector('#step-1 button');
+            btn1.innerText = "Iniciar Tarea";
+            btn1.disabled = false;
+            const btn2 = document.querySelector('#step-2 button');
+            btn2.innerText = "Finalizar y Calificar con IA";
+            btn2.disabled = false;
+        }
+
+        async function loadLeaderboard(periodo) {
+            globalPeriodo = periodo;
+            ['hoy', 'semana', 'mes'].forEach(p => {
+                const b = document.getElementById('p-' + p);
+                if(p === periodo) {
+                    b.className = "px-3 py-1 bg-amber-500 text-slate-900 font-bold text-xs rounded-full shadow";
+                } else {
+                    b.className = "px-3 py-1 bg-slate-700 text-slate-300 text-xs rounded-full";
+                }
+            });
+
+            try {
+                const res = await fetch(`/api/leaderboard?periodo=${periodo}`);
+                const data = await res.json();
+                
+                const sorted = Object.entries(data).sort((a,b) => b[1].puntos - a[1].puntos);
+                
+                let html = "";
+                
+                if(sorted.length > 0) {
+                    const first = sorted[0];
+                    const second = sorted.length > 1 ? sorted[1] : null;
+                    const third = sorted.length > 2 ? sorted[2] : null;
+                    const rest = sorted.slice(3);
+
+                    // 1er Lugar (Con clic habilitado para ver detalle)
+                    html += `
+                        <div onclick="openDetail('${first[0]}')" class="bg-gradient-to-b from-amber-500/20 to-slate-900 border-2 border-amber-500 rounded-2xl p-4 text-center shadow-lg relative overflow-hidden mb-3 cursor-pointer hover:border-amber-400 transition">
+                            <div class="absolute top-2 right-3 text-2xl">👑</div>
+                            <span class="text-3xl">🥇</span>
+                            <h2 class="text-lg font-extrabold text-amber-400 mt-1">${first[0]}</h2>
+                            <p class="text-xs text-slate-300 mb-2">${first[1].tareas} tareas completadas</p>
+                            <div class="inline-block bg-amber-500 text-slate-900 font-black px-4 py-1 rounded-full text-sm shadow">
+                                ${first[1].puntos} pts
+                            </div>
+                            <p class="text-[10px] text-amber-300/70 mt-2 underline">Toca para ver desglose de tareas</p>
+                        </div>
+                    `;
+
+                    if(second || third) {
+                        html += `<div class="grid grid-cols-2 gap-2 mb-3">`;
+                        
+                        if(second) {
+                            html += `
+                                <div onclick="openDetail('${second[0]}')" class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-center cursor-pointer hover:border-slate-500 transition">
+                                    <span class="text-2xl">🥈</span>
+                                    <p class="font-bold text-sm text-slate-200 truncate mt-1">${second[0]}</p>
+                                    <p class="text-[10px] text-slate-400">${second[1].tareas} tareas</p>
+                                    <p class="text-amber-300 font-extrabold text-sm mt-1">${second[1].puntos} pts</p>
+                                    <p class="text-[9px] text-slate-400 mt-1 underline">Ver tareas</p>
+                                </div>
+                            `;
+                        }
+                        
+                        if(third) {
+                            html += `
+                                <div onclick="openDetail('${third[0]}')" class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-center cursor-pointer hover:border-slate-500 transition">
+                                    <span class="text-2xl">🥉</span>
+                                    <p class="font-bold text-sm text-slate-200 truncate mt-1">${third[0]}</p>
+                                    <p class="text-[10px] text-slate-400">${third[1].tareas} tareas</p>
+                                    <p class="text-amber-300 font-extrabold text-sm mt-1">${third[1].puntos} pts</p>
+                                    <p class="text-[9px] text-slate-400 mt-1 underline">Ver tareas</p>
+                                </div>
+                            `;
+                        }
+                        
+                        html += `</div>`;
+                    }
+
+                    rest.forEach(([name, info], index) => {
+                        let rank = index + 4;
+                        html += `
+                            <div onclick="openDetail('${name}')" class="flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-800 text-sm cursor-pointer hover:border-slate-600 transition">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-slate-400 text-xs">#${rank}</span>
+                                    <span class="font-semibold text-slate-300">${name}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="font-bold text-amber-400">${info.puntos} pts</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                document.getElementById('podium-content').innerHTML = html;
+            } catch(e) {
+                console.error("Error cargando podio:", e);
+            }
+        }
+
+        async function openDetail(userName) {
+            document.getElementById('modal-title').innerText = `Tareas de ${userName}`;
+            document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">Cargando tareas...</p>`;
+            document.getElementById('modal-detalle').classList.remove('hidden');
+
+            try {
+                const res = await fetch(`/api/user-tasks?user=${encodeURIComponent(userName)}&periodo=${globalPeriodo}`);
+                
+                if (!res.ok) {
+                    throw new Error("Error en el servidor al obtener las tareas.");
+                }
+
+                const tasks = await res.json();
+
+                if(!Array.isArray(tasks) || tasks.length === 0) {
+                    document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">No hay tareas registradas en este período.</p>`;
+                    return;
+                }
+
+                let html = "";
+                tasks.forEach((t) => {
+                    html += `
+                        <div class="bg-slate-900 border border-slate-700 rounded-xl p-3.5 space-y-2 text-xs">
+                            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                                <span class="font-bold text-amber-400 text-sm">${t.task_name}</span>
+                                <span class="bg-amber-500/10 text-amber-300 font-semibold px-2 py-0.5 rounded">${t.puntos} pts</span>
+                            </div>
+                            <div class="text-slate-400 flex justify-between">
+                                <span>📅 ${t.fecha}</span>
+                                <span>⏱️ ${t.duracion} min</span>
+                            </div>
+                            <div class="bg-slate-800/60 p-2 rounded space-y-1">
+                                <span class="text-amber-300 font-semibold block">📝 Observaciones:</span>
+                                <p class="text-slate-300 italic">${t.observaciones || 'Sin observaciones'}</p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 pt-1">
+                                <a href="${t.before_url}" target="_blank" class="block text-center bg-slate-800 hover:bg-slate-700 text-amber-300 py-2 rounded-lg font-medium transition border border-slate-700">📸 Ver Antes</a>
+                                <a href="${t.after_url}" target="_blank" class="block text-center bg-slate-800 hover:bg-slate-700 text-emerald-300 py-2 rounded-lg font-medium transition border border-slate-700">🏁 Ver Después</a>
+                            </div>
+                        </div>
+                    `;
+                });
+                document.getElementById('modal-body').innerHTML = html;
+            } catch(e) {
+                console.error(e);
+                document.getElementById('modal-body').innerHTML = `<p class="text-center text-red-400 py-4">Error al cargar el detalle.</p>`;
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modal-detalle').classList.add('hidden');
+        }
+
+        // Arrancar directamente mostrando el Podio de la Semana por defecto al cargar la página
+        switchTab('podium', 'semana');
+    </script>
+</body>
+</html>
