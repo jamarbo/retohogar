@@ -21,7 +21,6 @@ app = FastAPI(title="Reto del Hogar")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
-# ID exacto de tu Google Sheet extraído de tu enlace
 SPREADSHEET_ID = "183uPElazqaz9QO9vdrj-9W3XcXKiOLFCRVzSiAMLaliQ"
 
 SCOPES = [
@@ -67,6 +66,28 @@ active_sessions = {}
 
 def get_colombia_now():
     return datetime.utcnow() - timedelta(hours=5)
+
+def extraer_puntos_y_datos(fila):
+    """Busca inteligentemente los puntos y el estado completado en cualquier columna."""
+    puntos = 0
+    completado = False
+    
+    for val in fila:
+        val_str = str(val).strip().lower()
+        if val_str in ["sí", "si", "true", "1", "yes"]:
+            completado = True
+            
+    for val in fila:
+        val_str = str(val).strip().replace(",", ".")
+        try:
+            num = float(val_str)
+            if num.is_integer() and 10 <= num <= 500:
+                puntos = int(num)
+                break
+        except ValueError:
+            continue
+            
+    return completado, puntos
 
 def subir_foto_drive_usuario(user_name, filename, photo_bytes):
     try:
@@ -196,10 +217,13 @@ async def get_leaderboard(periodo: str = "hoy"):
     inicio_mes_date = date(hoy_date.year, hoy_date.month, 1)
 
     for fila in filas[1:]:
-        if len(fila) < 6: continue
-        fecha_str, usuario_val, _, _, completado_val, puntos_str = fila[0], fila[1].lower(), fila[2], fila[3], fila[4].lower(), fila[5]
+        if len(fila) < 2: continue
+        fecha_str = str(fila[0]).strip()
+        usuario_val = str(fila[1]).strip().lower()
 
-        if completado_val not in ["sí", "si", "true", "1", "yes"]: continue
+        completado, pts = extraer_puntos_y_datos(fila)
+        if not completado: continue
+
         try:
             fila_date = datetime.strptime(fecha_str[:10], "%Y-%m-%d").date()
         except ValueError:
@@ -209,9 +233,6 @@ async def get_leaderboard(periodo: str = "hoy"):
         if periodo == "hoy" and fila_date != hoy_date: continue
         elif periodo == "semana" and fila_date < inicio_semana_date: continue
         elif periodo == "mes" and fila_date < inicio_mes_date: continue
-
-        try: pts = int(float(str(puntos_str).strip().replace(",", ".")))
-        except ValueError: pts = 0
 
         if any(t in usuario_val for t in ["jaiv", "haib", "jabe", "martinez", "martínez"]):
             totales["Jaiver Martínez"]["puntos"] += pts
@@ -243,9 +264,14 @@ async def get_user_tasks(user: str, periodo: str = "semana"):
         inicio_mes_date = date(hoy_date.year, hoy_date.month, 1)
 
         for fila in filas[1:]:
-            if len(fila) < 6: continue
-            fecha_str, usuario_val, task_name, duracion, completado_val, puntos_str = fila[0], fila[1], fila[2], fila[3], fila[4].lower(), fila[5]
-            if completado_val not in ["sí", "si", "true", "1", "yes"]: continue
+            if len(fila) < 2: continue
+            fecha_str = str(fila[0]).strip()
+            usuario_val = str(fila[1]).strip()
+            task_name = str(fila[2]).strip() if len(fila) > 2 else "Tarea"
+            duracion = str(fila[3]).strip() if len(fila) > 3 else "0"
+
+            completado, pts = extraer_puntos_y_datos(fila)
+            if not completado: continue
 
             user_lower = user.lower()
             row_user_lower = usuario_val.lower()
@@ -264,12 +290,9 @@ async def get_user_tasks(user: str, periodo: str = "semana"):
             elif periodo == "semana" and fila_date < inicio_semana_date: continue
             elif periodo == "mes" and fila_date < inicio_mes_date: continue
 
-            try: pts = int(float(str(puntos_str).strip().replace(",", ".")))
-            except ValueError: pts = 0
-
-            obs = fila[7] if len(fila) > 7 else "Sin observaciones"
-            b_url = fila[8] if len(fila) > 8 and fila[8].startswith("http") else "#"
-            a_url = fila[9] if len(fila) > 9 and fila[9].startswith("http") else "#"
+            obs = str(fila[7]).strip() if len(fila) > 7 else "Sin observaciones"
+            b_url = next((str(v).strip() for v in fila if str(v).strip().startswith("http")), "#")
+            a_url = b_url
 
             user_tasks.append({
                 "fecha": fecha_str, "task_name": task_name, "duracion": duracion,
