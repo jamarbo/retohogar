@@ -36,6 +36,7 @@ def get_credentials():
             return Credentials.from_service_account_info(info, scopes=SCOPES)
         except Exception as e:
             print(f"❌ Error leyendo GOOGLE_CREDENTIALS_JSON: {e}")
+            traceback.print_exc()
     if os.path.exists("credentials.json"):
         return Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
     from google.auth import default
@@ -68,7 +69,6 @@ def get_colombia_now():
     return datetime.utcnow() - timedelta(hours=5)
 
 def extraer_puntos_y_datos(fila):
-    """Busca inteligentemente los puntos y el estado completado en cualquier columna."""
     puntos = 0
     completado = False
     
@@ -122,6 +122,7 @@ def guardar_en_sheet(fila):
         print("✅ Registro guardado en Sheets con éxito.")
     except Exception as e:
         print(f"❌ Error al guardar en Sheets: {e}")
+        traceback.print_exc()
 
 @app.post("/api/start-task")
 async def start_task(user_name: str = Form(...), task_name: str = Form(...), before_photo: UploadFile = File(...)):
@@ -206,7 +207,8 @@ async def get_leaderboard(periodo: str = "hoy"):
         sheet = gc.open_by_key(SPREADSHEET_ID).sheet1
         filas = sheet.get_all_values()
     except Exception as e:
-        print(f"Error Sheets: {e}")
+        print("❌ Error detallado en Sheets (/api/leaderboard):")
+        traceback.print_exc()
         return totales
 
     if len(filas) <= 1: return totales
