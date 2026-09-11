@@ -20,7 +20,9 @@ app = FastAPI(title="Reto del Hogar")
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
-SHEET_NAME = "Registro_Tareas_Hogar"
+
+# ID exacto de tu Google Sheet extraído de tu enlace
+SPREADSHEET_ID = "183uPElazqaz9QO9vdrj-9W3XcXKiOLFCRVzSiAMLaliQ"
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -94,7 +96,7 @@ def guardar_en_sheet(fila):
     try:
         creds = get_credentials()
         gc = gspread.authorize(creds)
-        sh = gc.open(SHEET_NAME)
+        sh = gc.open_by_key(SPREADSHEET_ID)
         sh.sheet1.append_row(fila)
         print("✅ Registro guardado en Sheets con éxito.")
     except Exception as e:
@@ -180,7 +182,7 @@ async def get_leaderboard(periodo: str = "hoy"):
     try:
         creds = get_credentials()
         gc = gspread.authorize(creds)
-        sheet = gc.open(SHEET_NAME).sheet1
+        sheet = gc.open_by_key(SPREADSHEET_ID).sheet1
         filas = sheet.get_all_values()
     except Exception as e:
         print(f"Error Sheets: {e}")
@@ -231,7 +233,7 @@ async def get_user_tasks(user: str, periodo: str = "semana"):
     try:
         creds = get_credentials()
         gc = gspread.authorize(creds)
-        sheet = gc.open(SHEET_NAME).sheet1
+        sheet = gc.open_by_key(SPREADSHEET_ID).sheet1
         filas = sheet.get_all_values()
         if len(filas) <= 1: return user_tasks
 
