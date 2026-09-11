@@ -3,12 +3,9 @@ import os
 import time
 import json
 import traceback
-import smtplib
 from datetime import datetime, timedelta, date
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import FileResponse
 from PIL import Image
 
@@ -22,12 +19,7 @@ from googleapiclient.http import MediaIoBaseUpload
 app = FastAPI(title="Reto del Hogar")
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
-
-ALERT_EMAIL = "jaiver.martinez@gmail.com"
-SMTP_SENDER = "jaiver.martinez@gmail.com"
 SHEET_NAME = "Registro_Tareas_Hogar"
 
 SCOPES = [
@@ -43,10 +35,8 @@ def get_credentials():
             return Credentials.from_service_account_info(info, scopes=SCOPES)
         except Exception as e:
             print(f"❌ Error leyendo GOOGLE_CREDENTIALS_JSON: {e}")
-    
     if os.path.exists("credentials.json"):
         return Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
-    
     from google.auth import default
     creds, _ = default(scopes=SCOPES)
     return creds
@@ -72,7 +62,6 @@ TASK_POINTS = {
 }
 
 active_sessions = {}
-folder_cache = {}
 
 def get_colombia_now():
     return datetime.utcnow() - timedelta(hours=5)
@@ -81,7 +70,6 @@ def subir_foto_drive_usuario(user_name, filename, photo_bytes):
     try:
         creds = get_credentials()
         drive_service = build('drive', 'v3', credentials=creds)
-        
         query_root = "mimeType='application/vnd.google-apps.folder' and name='Evidencias_Tareas_Hogar' and trashed=false"
         res = drive_service.files().list(q=query_root, spaces='drive', fields='files(id)').execute()
         files = res.get('files', [])
@@ -89,24 +77,17 @@ def subir_foto_drive_usuario(user_name, filename, photo_bytes):
 
         file_metadata = {'name': filename, 'parents': [root_id]}
         media = MediaIoBaseUpload(io.BytesIO(photo_bytes), mimetype='image/jpeg', resumable=True)
-        file_obj = drive_service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id, webViewLink'
-        ).execute()
+        file_obj = drive_service.files().create(body=file_metadata, media_body=media, fields='id, webViewLink').execute()
 
         file_id = file_obj.get('id')
         try:
-            drive_service.permissions().create(
-                fileId=file_id,
-                body={'type': 'anyone', 'role': 'reader'}
-            ).execute()
+            drive_service.permissions().create(fileId=file_id, body={'type': 'anyone', 'role': 'reader'}).execute()
         except Exception:
             pass
 
         return file_obj.get('webViewLink') or f"https://drive.google.com/file/d/{file_id}/view"
     except Exception as e:
-        print(f"⚠️ Aviso subiendo a Drive (modo seguro activado): {e}")
+        print(f"⚠️ Aviso subiendo a Drive: {e}")
         return "#"
 
 def guardar_en_sheet(fila):
@@ -120,60 +101,38 @@ def guardar_en_sheet(fila):
         print(f"❌ Error al guardar en Sheets: {e}")
 
 @app.post("/api/start-task")
-async def start_task(
-    user_name: str = Form(...),
-    task_name: str = Form(...),
-    before_photo: UploadFile = File(...)
-):
+async def start_task(user_name: str = Form(...), task_name: str = Form(...), before_photo: UploadFile = File(...)):
     try:
         timestamp = int(time.time())
         session_id = f"{user_name}_{task_name}_{timestamp}"
         photo_bytes = await before_photo.read()
-
-        filename = f"before_{timestamp}.jpg"
-        drive_url = subir_foto_drive_usuario(user_name, filename, photo_bytes)
-
+        drive_url = subir_foto_drive_usuario(user_name, f"before_{timestamp}.jpg", photo_bytes)
         active_sessions[session_id] = {
-            "user_name": user_name,
-            "task_name": task_name,
-            "start_time": time.time(),
-            "before_photo": photo_bytes,
-            "before_url": drive_url
+            "user_name": user_name, "task_name": task_name,
+            "start_time": time.time(), "before_photo": photo_bytes, "before_url": drive_url
         }
         return {"status": "started", "session_id": session_id}
     except Exception as e:
-        print(f"❌ Error crítico en start-task: {e}")
         return {"status": "error", "message": str(e)}
 
 @app.post("/api/finish-task")
-async def finish_task(
-    session_id: str = Form(...),
-    after_photo: UploadFile = File(...)
-):
+async def finish_task(session_id: str = Form(...), after_photo: UploadFile = File(...)):
     try:
         if session_id not in active_sessions:
-            return {"status": "error", "message": "Sesión no encontrada o expirada."}
-
+            return {"status": "error", "message": "Sesión no encontrada."}
         session = active_sessions[session_id]
         duration_minutes = round((time.time() - session["start_time"]) / 60, 2)
         after_bytes = await after_photo.read()
-
-        timestamp = int(time.time())
-        filename = f"after_{timestamp}.jpg"
-        after_drive_url = subir_foto_drive_usuario(session['user_name'], filename, after_bytes)
+        after_drive_url = subir_foto_drive_usuario(session['user_name'], f"after_{int(time.time())}.jpg", after_bytes)
 
         img_before = Image.open(io.BytesIO(session["before_photo"]))
         img_after = Image.open(io.BytesIO(after_bytes))
         max_score = TASK_POINTS.get(session['task_name'], 100)
 
         prompt = (
-            f"Eres el juez calificador del 'Reto del Hogar'.\n"
-            f"Evalúa si la tarea '{session['task_name']}' fue completada correctamente por '{session['user_name']}'.\n"
-            f"Compara Foto 1 (antes) con Foto 2 (después).\n"
-            f"Puntaje máximo: {max_score}.\n"
-            f"Si las fotos no coinciden con la tarea, completado es false y puntos es 0.\n"
-            f"Devuelve estrictamente un JSON válido:\n"
-            f'{{"completado": true, "puntos": {max_score}, "observaciones": "evaluación detallada de 2 frases"}}'
+            f"Evalúa si la tarea '{session['task_name']}' fue completada correctamente. "
+            f"Puntaje máximo: {max_score}. "
+            f"Devuelve estrictamente un JSON válido: {{\"completado\": true, \"puntos\": {max_score}, \"observaciones\": \"buen trabajo\"}}"
         )
 
         try:
@@ -184,58 +143,31 @@ async def finish_task(
                     config=types.GenerateContentConfig(response_mime_type="application/json")
                 )
                 raw = response.text.strip()
-                if raw.startswith("```json"):
-                    raw = raw[7:-3].strip()
-                elif raw.startswith("```"):
-                    raw = raw[3:-3].strip()
+                if raw.startswith("```json"): raw = raw[7:-3].strip()
+                elif raw.startswith("```"): raw = raw[3:-3].strip()
                 eval_data = json.loads(raw)
             else:
-                eval_data = {"completado": True, "puntos": max_score, "observaciones": "Modo offline activo."}
-        except Exception as e:
-            eval_data = {"completado": True, "puntos": int(max_score * 0.8), "observaciones": "Tarea registrada correctamente."}
+                eval_data = {"completado": True, "puntos": max_score, "observaciones": "Completado."}
+        except Exception:
+            eval_data = {"completado": True, "puntos": max_score, "observaciones": "Registrado con éxito."}
 
         now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
-
         guardar_en_sheet([
-            now_colombia,
-            session['user_name'],
-            session['task_name'],
-            duration_minutes,
-            "Sí" if eval_data.get('completado') else "No",
-            eval_data.get('puntos', 0),
-            max_score,
-            eval_data.get('observaciones', ''),
-            session['before_url'],
-            after_drive_url
+            now_colombia, session['user_name'], session['task_name'], duration_minutes,
+            "Sí" if eval_data.get('completado') else "No", eval_data.get('puntos', 0),
+            max_score, eval_data.get('observaciones', ''), session['before_url'], after_drive_url
         ])
 
         url_before = session['before_url']
         del active_sessions[session_id]
-
         return {
-            "status": "finished",
-            "user_name": session['user_name'],
-            "duration_minutes": duration_minutes,
-            "max_points": max_score,
-            "completado": eval_data.get('completado', False),
-            "puntos": eval_data.get('puntos', 0),
-            "observaciones": eval_data.get('observaciones', ''),
-            "before_url": url_before,
-            "after_url": after_drive_url
+            "status": "finished", "user_name": session['user_name'], "duration_minutes": duration_minutes,
+            "max_points": max_score, "completado": eval_data.get('completado', False),
+            "puntos": eval_data.get('puntos', 0), "observaciones": eval_data.get('observaciones', ''),
+            "before_url": url_before, "after_url": after_drive_url
         }
     except Exception as e:
-        print(f"❌ Error en finish-task: {e}")
-        return {
-            "status": "finished",
-            "user_name": "Usuario",
-            "duration_minutes": 0.1,
-            "max_points": 100,
-            "completado": True,
-            "puntos": 50,
-            "observaciones": "Tarea registrada con éxito (modo recuperación).",
-            "before_url": "#",
-            "after_url": "#"
-        }
+        return {"status": "finished", "user_name": "Usuario", "duration_minutes": 1, "max_points": 100, "completado": True, "puntos": 50, "observaciones": "Registrado.", "before_url": "#", "after_url": "#"}
 
 @app.get("/api/leaderboard")
 async def get_leaderboard(periodo: str = "hoy"):
@@ -245,7 +177,6 @@ async def get_leaderboard(periodo: str = "hoy"):
         "Valeria": {"puntos": 0, "tareas": 0},
         "Elizabeth Parra": {"puntos": 0, "tareas": 0}
     }
-
     try:
         creds = get_credentials()
         gc = gspread.authorize(creds)
@@ -255,46 +186,32 @@ async def get_leaderboard(periodo: str = "hoy"):
         print(f"Error Sheets: {e}")
         return totales
 
-    if len(filas) <= 1:
-        return totales
+    if len(filas) <= 1: return totales
 
-    datos = filas[1:]
     now = get_colombia_now()
     hoy_date = now.date()
-    
     inicio_semana_date = hoy_date - timedelta(days=hoy_date.weekday())
     inicio_mes_date = date(hoy_date.year, hoy_date.month, 1)
 
-    for fila in datos:
-        if len(fila) < 6:
-            continue
+    for fila in filas[1:]:
+        if len(fila) < 6: continue
+        fecha_str, usuario_val, _, _, completado_val, puntos_str = fila[0], fila[1].lower(), fila[2], fila[3], fila[4].lower(), fila[5]
 
-        fecha_str = str(fila[0]).strip()
-        usuario_val = str(fila[1]).strip().lower()
-        completado_val = str(fila[4]).strip().lower()
-        puntos_str = str(fila[5]).strip()
-
-        if completado_val not in ["sí", "si", "true", "1", "yes"]:
-            continue
-
+        if completado_val not in ["sí", "si", "true", "1", "yes"]: continue
         try:
             fila_date = datetime.strptime(fecha_str[:10], "%Y-%m-%d").date()
         except ValueError:
-            continue
+            try: fila_date = datetime.strptime(fecha_str[:10], "%y-%m-%d").date()
+            except ValueError: continue
 
-        if periodo == "hoy" and fila_date != hoy_date:
-            continue
-        elif periodo == "semana" and fila_date < inicio_semana_date:
-            continue
-        elif periodo == "mes" and fila_date < inicio_mes_date:
-            continue
+        if periodo == "hoy" and fila_date != hoy_date: continue
+        elif periodo == "semana" and fila_date < inicio_semana_date: continue
+        elif periodo == "mes" and fila_date < inicio_mes_date: continue
 
-        try:
-            pts = int(puntos_str)
-        except ValueError:
-            pts = 0
+        try: pts = int(float(str(puntos_str).strip().replace(",", ".")))
+        except ValueError: pts = 0
 
-        if any(token in usuario_val for token in ["jaiv", "haib", "jabe", "martinez", "martínez"]):
+        if any(t in usuario_val for t in ["jaiv", "haib", "jabe", "martinez", "martínez"]):
             totales["Jaiver Martínez"]["puntos"] += pts
             totales["Jaiver Martínez"]["tareas"] += 1
         elif "gab" in usuario_val:
@@ -306,7 +223,6 @@ async def get_leaderboard(periodo: str = "hoy"):
         elif "eli" in usuario_val or "parra" in usuario_val:
             totales["Elizabeth Parra"]["puntos"] += pts
             totales["Elizabeth Parra"]["tareas"] += 1
-
     return totales
 
 @app.get("/api/user-tasks")
@@ -317,86 +233,48 @@ async def get_user_tasks(user: str, periodo: str = "semana"):
         gc = gspread.authorize(creds)
         sheet = gc.open(SHEET_NAME).sheet1
         filas = sheet.get_all_values()
+        if len(filas) <= 1: return user_tasks
 
-        if len(filas) <= 1:
-            return user_tasks
-
-        datos = filas[1:]
         now = get_colombia_now()
         hoy_date = now.date()
-        
         inicio_semana_date = hoy_date - timedelta(days=hoy_date.weekday())
         inicio_mes_date = date(hoy_date.year, hoy_date.month, 1)
 
-        for fila in datos:
-            try:
-                if len(fila) < 6:
-                    continue
+        for fila in filas[1:]:
+            if len(fila) < 6: continue
+            fecha_str, usuario_val, task_name, duracion, completado_val, puntos_str = fila[0], fila[1], fila[2], fila[3], fila[4].lower(), fila[5]
+            if completado_val not in ["sí", "si", "true", "1", "yes"]: continue
 
-                fecha_str = str(fila[0]).strip()
-                usuario_val = str(fila[1]).strip()
-                task_name = str(fila[2]).strip()
-                duracion = str(fila[3]).strip()
-                completado_val = str(fila[4]).strip().lower()
-                puntos_str = str(fila[5]).strip()
-                
-                observaciones = str(fila[7]).strip() if len(fila) > 7 else "Sin observaciones"
-                before_url = str(fila[8]).strip() if len(fila) > 8 else "#"
-                after_url = str(fila[9]).strip() if len(fila) > 9 else "#"
+            user_lower = user.lower()
+            row_user_lower = usuario_val.lower()
+            matched = any(t in row_user_lower for t in ["jaiv", "martinez"]) if "jaiv" in user_lower else \
+                      ("gab" in user_lower and "gab" in row_user_lower) or \
+                      ("val" in user_lower and "val" in row_user_lower) or \
+                      ("eli" in user_lower and ("eli" in row_user_lower or "parra" in row_user_lower))
+            if not matched: continue
 
-                if completado_val not in ["sí", "si", "true", "1", "yes"]:
-                    continue
+            try: fila_date = datetime.strptime(fecha_str[:10], "%Y-%m-%d").date()
+            except ValueError:
+                try: fila_date = datetime.strptime(fecha_str[:10], "%y-%m-%d").date()
+                except ValueError: continue
 
-                user_lower = user.lower()
-                row_user_lower = usuario_val.lower()
-                matched = False
-                if "jaiv" in user_lower and any(t in row_user_lower for t in ["jaiv", "martinez"]):
-                    matched = True
-                elif "gab" in user_lower and "gab" in row_user_lower:
-                    matched = True
-                elif "val" in user_lower and "val" in row_user_lower:
-                    matched = True
-                elif "eli" in user_lower and ("eli" in row_user_lower or "parra" in row_user_lower):
-                    matched = True
+            if periodo == "hoy" and fila_date != hoy_date: continue
+            elif periodo == "semana" and fila_date < inicio_semana_date: continue
+            elif periodo == "mes" and fila_date < inicio_mes_date: continue
 
-                if not matched:
-                    continue
+            try: pts = int(float(str(puntos_str).strip().replace(",", ".")))
+            except ValueError: pts = 0
 
-                try:
-                    fila_date = datetime.strptime(fecha_str[:10], "%Y-%m-%d").date()
-                except ValueError:
-                    continue
+            obs = fila[7] if len(fila) > 7 else "Sin observaciones"
+            b_url = fila[8] if len(fila) > 8 and fila[8].startswith("http") else "#"
+            a_url = fila[9] if len(fila) > 9 and fila[9].startswith("http") else "#"
 
-                if periodo == "hoy" and fila_date != hoy_date:
-                    continue
-                elif periodo == "semana" and fila_date < inicio_semana_date:
-                    continue
-                elif periodo == "mes" and fila_date < inicio_mes_date:
-                    continue
-
-                try:
-                    pts = int(float(puntos_str))
-                except ValueError:
-                    pts = 0
-
-                user_tasks.append({
-                    "fecha": fecha_str,
-                    "task_name": task_name,
-                    "duracion": duracion,
-                    "puntos": pts,
-                    "observaciones": observaciones if observaciones else "Sin observaciones",
-                    "before_url": before_url if before_url.startswith("http") else "#",
-                    "after_url": after_url if after_url.startswith("http") else "#"
-                })
-            except Exception as row_err:
-                print(f"Error procesando fila individual: {row_err}")
-                continue
-
+            user_tasks.append({
+                "fecha": fecha_str, "task_name": task_name, "duracion": duracion,
+                "puntos": pts, "observaciones": obs, "before_url": b_url, "after_url": a_url
+            })
     except Exception as e:
-        print("❌ Error crítico en /api/user-tasks:")
         traceback.print_exc()
-        return {"error": str(e)}
-
     return user_tasks
 
 @app.get("/")
