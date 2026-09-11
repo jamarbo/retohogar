@@ -15,7 +15,7 @@ from PIL import Image
 from google import genai
 from google.genai import types
 import gspread
-from google.auth import default
+from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
@@ -29,6 +29,27 @@ client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 ALERT_EMAIL = "jaiver.martinez@gmail.com"
 SMTP_SENDER = "jaiver.martinez@gmail.com"
 SHEET_NAME = "Registro_Tareas_Hogar"
+
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
+def get_credentials():
+    cred_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    if cred_json:
+        try:
+            info = json.loads(cred_json)
+            return Credentials.from_service_account_info(info, scopes=SCOPES)
+        except Exception as e:
+            print(f"❌ Error leyendo GOOGLE_CREDENTIALS_JSON: {e}")
+    
+    if os.path.exists("credentials.json"):
+        return Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
+    
+    from google.auth import default
+    creds, _ = default(scopes=SCOPES)
+    return creds
 
 TASK_POINTS = {
     "Limpiar las cacas / arenero": 200,
@@ -58,7 +79,7 @@ def get_colombia_now():
 
 def subir_foto_drive_usuario(user_name, filename, photo_bytes):
     try:
-        creds, _ = default()
+        creds = get_credentials()
         drive_service = build('drive', 'v3', credentials=creds)
         
         query_root = "mimeType='application/vnd.google-apps.folder' and name='Evidencias_Tareas_Hogar' and trashed=false"
@@ -90,7 +111,7 @@ def subir_foto_drive_usuario(user_name, filename, photo_bytes):
 
 def guardar_en_sheet(fila):
     try:
-        creds, _ = default()
+        creds = get_credentials()
         gc = gspread.authorize(creds)
         sh = gc.open(SHEET_NAME)
         sh.sheet1.append_row(fila)
@@ -226,7 +247,7 @@ async def get_leaderboard(periodo: str = "hoy"):
     }
 
     try:
-        creds, _ = default()
+        creds = get_credentials()
         gc = gspread.authorize(creds)
         sheet = gc.open(SHEET_NAME).sheet1
         filas = sheet.get_all_values()
@@ -292,7 +313,7 @@ async def get_leaderboard(periodo: str = "hoy"):
 async def get_user_tasks(user: str, periodo: str = "semana"):
     user_tasks = []
     try:
-        creds, _ = default()
+        creds = get_credentials()
         gc = gspread.authorize(creds)
         sheet = gc.open(SHEET_NAME).sheet1
         filas = sheet.get_all_values()
