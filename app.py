@@ -86,6 +86,7 @@ def subir_foto_drive_usuario(user_name, filename, photo_bytes):
             body=file_metadata,
             media_body=media,
             fields='id, webViewLink'
+            supportsAllDrives=True
         ).execute()
 
         file_id = file_obj.get('id')
