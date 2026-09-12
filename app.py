@@ -13,6 +13,7 @@ from google import genai
 from google.genai import types
 import gspread
 from google.auth import default
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
@@ -48,9 +49,22 @@ active_sessions = {}
 def get_colombia_now():
     return datetime.utcnow() - timedelta(hours=5)
 
+def get_google_credentials():
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    if creds_json:
+        creds_dict = json.loads(creds_json)
+        return service_account.Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    else:
+        creds, _ = default()
+        return creds
+
 def subir_foto_drive_usuario(user_name, filename, photo_bytes):
     try:
-        creds, _ = default()
+        creds = get_google_credentials()
         drive_service = build('drive', 'v3', credentials=creds)
         
         query_root = "mimeType='application/vnd.google-apps.folder' and name='Evidencias_Tareas_Hogar' and trashed=false"
@@ -82,7 +96,7 @@ def subir_foto_drive_usuario(user_name, filename, photo_bytes):
 
 def guardar_en_sheet(fila):
     try:
-        creds, _ = default()
+        creds = get_google_credentials()
         gc = gspread.authorize(creds)
         sh = gc.open(SHEET_NAME)
         sh.sheet1.append_row(fila)
@@ -210,7 +224,7 @@ async def get_leaderboard(periodo: str = "hoy"):
         "Elizabeth Parra": {"puntos": 0, "tareas": 0}
     }
     try:
-        creds, _ = default()
+        creds = get_google_credentials()
         gc = gspread.authorize(creds)
         sheet = gc.open(SHEET_NAME).sheet1
         filas = sheet.get_all_values()
@@ -273,7 +287,7 @@ async def get_leaderboard(periodo: str = "hoy"):
 async def get_user_tasks(user: str, periodo: str = "semana"):
     user_tasks = []
     try:
-        creds, _ = default()
+        creds = get_google_credentials()
         gc = gspread.authorize(creds)
         sheet = gc.open(SHEET_NAME).sheet1
         filas = sheet.get_all_values()
