@@ -85,7 +85,7 @@ def subir_foto_drive_usuario(user_name, filename, photo_bytes):
         file_obj = drive_service.files().create(
             body=file_metadata,
             media_body=media,
-            fields='id, webViewLink'
+            fields='id, webViewLink',
             supportsAllDrives=True
         ).execute()
 
