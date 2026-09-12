@@ -81,19 +81,12 @@ def subir_foto_drive_usuario(user_name, filename, photo_bytes):
         ).execute()
 
         file_id = file_obj.get('id')
-        try:
-            drive_service.permissions().create(
-                fileId=file_id,
-                body={'type': 'anyone', 'role': 'reader'}
-            ).execute()
-        except Exception:
-            pass
-
-        return file_obj.get('webViewLink') or f"https://drive.google.com/file/d/{file_id}/view"
+        
+        # Devolvemos siempre el enlace directo utilizando el ID del archivo
+        return f"https://drive.google.com/file/d/{file_id}/view"
     except Exception as e:
-        print(f"⚠️ Aviso subiendo a Drive: {e}")
+        print(f"⚠️ Error subiendo a Drive: {e}")
         return "#"
-
 def guardar_en_sheet(fila):
     try:
         creds = get_google_credentials()
