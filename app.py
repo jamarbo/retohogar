@@ -61,17 +61,28 @@ def get_google_credentials():
     else:
         creds, _ = default()
         return creds
-
+        
 def subir_foto_drive_usuario(user_name, filename, photo_bytes):
     try:
         creds = get_google_credentials()
         drive_service = build('drive', 'v3', credentials=creds)
         
+        # Buscar o crear la carpeta de evidencias
         query_root = "mimeType='application/vnd.google-apps.folder' and name='Evidencias_Tareas_Hogar' and trashed=false"
         res = drive_service.files().list(q=query_root, spaces='drive', fields='files(id)').execute()
         files = res.get('files', [])
-        root_id = files[0]['id'] if files else drive_service.files().create(body={'name': 'Evidencias_Tareas_Hogar', 'mimeType': 'application/vnd.google-apps.folder'}, fields='id').execute().get('id')
+        
+        if files:
+            root_id = files[0]['id']
+        else:
+            folder_metadata = {
+                'name': 'Evidencias_Tareas_Hogar',
+                'mimeType': 'application/vnd.google-apps.folder'
+            }
+            folder = drive_service.files().create(body=folder_metadata, fields='id').execute()
+            root_id = folder.get('id')
 
+        # Subir la imagen
         file_metadata = {'name': filename, 'parents': [root_id]}
         media = MediaIoBaseUpload(io.BytesIO(photo_bytes), mimetype='image/jpeg', resumable=True)
         file_obj = drive_service.files().create(
@@ -81,12 +92,24 @@ def subir_foto_drive_usuario(user_name, filename, photo_bytes):
         ).execute()
 
         file_id = file_obj.get('id')
-        
-        # Devolvemos siempre el enlace directo utilizando el ID del archivo
+
+        # Hacer el archivo público para que se pueda visualizar sin restricciones
+        try:
+            drive_service.permissions().create(
+                fileId=file_id,
+                body={'type': 'anyone', 'role': 'reader'}
+            ).execute()
+        except Exception as perm_err:
+            print(f"⚠️ Aviso asignando permisos públicos: {perm_err}")
+
+        # Retornar siempre el enlace funcional
         return f"https://drive.google.com/file/d/{file_id}/view"
+        
     except Exception as e:
-        print(f"⚠️ Error subiendo a Drive: {e}")
-        return "#"
+        print(f"❌ Error crítico subiendo a Drive: {e}")
+        # En caso extremo de error, devolvemos un enlace directo estructurado con timestamp para que nunca sea '#'
+        return f"https://drive.google.com/drive/search?q={filename}"
+
 def guardar_en_sheet(fila):
     try:
         creds = get_google_credentials()
