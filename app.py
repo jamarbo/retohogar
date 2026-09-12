@@ -62,48 +62,39 @@ def get_google_credentials():
         creds, _ = default()
         return creds
         
+import base64
+import requests
+
 def subir_foto_drive_usuario(user_name, filename, photo_bytes):
     try:
-        creds = get_google_credentials()
-        drive_service = build('drive', 'v3', credentials=creds)
+        github_token = os.environ.get("GITHUB_TOKEN")
+        repo_name = "jamarbo/retohogar"
         
-        # Obtenemos el ID de la carpeta desde la variable de entorno de Render
-        root_id = os.environ.get("DRIVE_FOLDER_ID")
-        
-        if not root_id:
-            # Fallback si estás probando localmente o en Colab
-            query_root = "mimeType='application/vnd.google-apps.folder' and name='Evidencias_Tareas_Hogar' and trashed=false"
-            res = drive_service.files().list(q=query_root, spaces='drive', fields='files(id)').execute()
-            files = res.get('files', [])
-            root_id = files[0]['id'] if files else None
+        if not github_token:
+            print("⚠️ Falta configurar GITHUB_TOKEN en Render")
+            return "#"
             
-        if not root_id:
-            raise Exception("No se encontró el ID de la carpeta de Drive. Configura la variable DRIVE_FOLDER_ID.")
-
-        file_metadata = {'name': filename, 'parents': [root_id]}
-        media = MediaIoBaseUpload(io.BytesIO(photo_bytes), mimetype='image/jpeg', resumable=True)
-        file_obj = drive_service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id, webViewLink',
-            supportsAllDrives=True
-        ).execute()
-
-        file_id = file_obj.get('id')
-
-        # Dar permisos públicos de lectura para que se pueda ver en el Sheet y en la web
-        try:
-            drive_service.permissions().create(
-                fileId=file_id,
-                body={'type': 'anyone', 'role': 'reader'}
-            ).execute()
-        except Exception:
-            pass
-
-        return f"https://drive.google.com/file/d/{file_id}/view"
+        encoded_content = base64.b64encode(photo_bytes).decode("utf-8")
+        url = f"https://api.github.com/repos/{repo_name}/contents/evidencias/{filename}"
         
+        headers = {
+            "Authorization": f"Bearer {github_token}",
+            "Accept": "application/vnd.github+json"
+        }
+        data = {
+            "message": f"Evidencia automática {filename}",
+            "content": encoded_content,
+            "branch": "main"
+        }
+        
+        response = requests.put(url, headers=headers, json=data)
+        if response.status_code in [201, 200]:
+            return f"https://raw.githubusercontent.com/{repo_name}/main/evidencias/{filename}"
+        else:
+            print(f"❌ Error subiendo a GitHub: {response.text}")
+            return "#"
     except Exception as e:
-        print(f"❌ Error subiendo a Drive con cuenta de servicio: {e}")
+        print(f"❌ Excepción subiendo a GitHub: {e}")
         return "#"
         
 def guardar_en_sheet(fila):
