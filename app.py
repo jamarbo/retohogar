@@ -67,22 +67,19 @@ def subir_foto_drive_usuario(user_name, filename, photo_bytes):
         creds = get_google_credentials()
         drive_service = build('drive', 'v3', credentials=creds)
         
-        # Buscar o crear la carpeta de evidencias
-        query_root = "mimeType='application/vnd.google-apps.folder' and name='Evidencias_Tareas_Hogar' and trashed=false"
-        res = drive_service.files().list(q=query_root, spaces='drive', fields='files(id)').execute()
-        files = res.get('files', [])
+        # Obtenemos el ID de la carpeta desde la variable de entorno de Render
+        root_id = os.environ.get("DRIVE_FOLDER_ID")
         
-        if files:
-            root_id = files[0]['id']
-        else:
-            folder_metadata = {
-                'name': 'Evidencias_Tareas_Hogar',
-                'mimeType': 'application/vnd.google-apps.folder'
-            }
-            folder = drive_service.files().create(body=folder_metadata, fields='id').execute()
-            root_id = folder.get('id')
+        if not root_id:
+            # Fallback si estás probando localmente o en Colab
+            query_root = "mimeType='application/vnd.google-apps.folder' and name='Evidencias_Tareas_Hogar' and trashed=false"
+            res = drive_service.files().list(q=query_root, spaces='drive', fields='files(id)').execute()
+            files = res.get('files', [])
+            root_id = files[0]['id'] if files else None
+            
+        if not root_id:
+            raise Exception("No se encontró el ID de la carpeta de Drive. Configura la variable DRIVE_FOLDER_ID.")
 
-        # Subir la imagen
         file_metadata = {'name': filename, 'parents': [root_id]}
         media = MediaIoBaseUpload(io.BytesIO(photo_bytes), mimetype='image/jpeg', resumable=True)
         file_obj = drive_service.files().create(
@@ -93,23 +90,21 @@ def subir_foto_drive_usuario(user_name, filename, photo_bytes):
 
         file_id = file_obj.get('id')
 
-        # Hacer el archivo público para que se pueda visualizar sin restricciones
+        # Dar permisos públicos de lectura para que se pueda ver en el Sheet y en la web
         try:
             drive_service.permissions().create(
                 fileId=file_id,
                 body={'type': 'anyone', 'role': 'reader'}
             ).execute()
-        except Exception as perm_err:
-            print(f"⚠️ Aviso asignando permisos públicos: {perm_err}")
+        except Exception:
+            pass
 
-        # Retornar siempre el enlace funcional
         return f"https://drive.google.com/file/d/{file_id}/view"
         
     except Exception as e:
-        print(f"❌ Error crítico subiendo a Drive: {e}")
-        # En caso extremo de error, devolvemos un enlace directo estructurado con timestamp para que nunca sea '#'
-        return f"https://drive.google.com/drive/search?q={filename}"
-
+        print(f"❌ Error subiendo a Drive con cuenta de servicio: {e}")
+        return "#"
+        
 def guardar_en_sheet(fila):
     try:
         creds = get_google_credentials()
