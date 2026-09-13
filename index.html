@@ -86,12 +86,6 @@
                 <button onclick="resetApp()" class="w-full mt-2 bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded transition">Hacer otra tarea</button>
             </div>
         </div>		
-        <!-- Sección Log  -->
-		
-		<div id="debug-log" class="mt-4 p-3 bg-gray-900 text-green-400 font-mono text-xs rounded-lg hidden shadow-inner">
-				<p class="font-bold border-b border-gray-700 pb-1 mb-1">🔍 Trazas de Cliente (Debug):</p>
-			<div id="log-content" class="space-y-1"></div>
-		</div>
 
         <!-- Sección Podio Real -->
         <div id="section-podium" class="space-y-4">
@@ -155,95 +149,75 @@
             document.getElementById('step-1').classList.add('hidden');
             document.getElementById('step-2').classList.remove('hidden');
         }
-function logStep(message) {
-    const debugBox = document.getElementById('debug-log');
-    const logContent = document.getElementById('log-content');
-    debugBox.classList.remove('hidden');
-    
-    const timestamp = new Date().toLocaleTimeString();
-    logContent.innerHTML += `<div>[${timestamp}] ${message}</div>`;
-}
 
-async function finishTask() {
-    logStep("Iniciando cierre de tarea...");
-    
-    const photoBefore = document.getElementById('before_photo');
-    const photoAfter = document.getElementById('after_photo');
-    
-    if(photoAfter.files.length === 0) {
-        logStep("❌ Error: Falta la foto final.");
-        alert("Por favor toma o selecciona la foto final.");
-        return;
-    }
-
-    const btn = event.target;
-    btn.disabled = true;
-
-    const endTime = new Date();
-    const durationMinutes = Math.max(1, Math.round((endTime - startTime) / 60000));
-    logStep(`⏱️ Duración calculada: ${durationMinutes} min`);
-
-    let finalBeforePhoto = photoBefore.files[0];
-    let finalAfterPhoto = photoAfter.files[0];
-
-    const compOptions = {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 1280,
-        useWebWorker: true
-    };
-
-    try {
-        logStep("🗜️ Comprimiendo imágenes en el celular...");
-        btn.innerText = "Comprimiendo fotos...";
-        finalBeforePhoto = await imageCompression(photoBefore.files[0], compOptions);
-        finalAfterPhoto = await imageCompression(photoAfter.files[0], compOptions);
-        logStep("✅ Imágenes comprimidas con éxito.");
-    } catch (error) {
-        logStep("⚠️ Error en compresión, usando originales: " + error.message);
-    }
-
-    logStep("🚀 Enviando payload al servidor (/api/evaluate-task)...");
-    btn.innerText = "Enviando y analizando con IA...";
-
-    const formData = new FormData();
-    formData.append("user_name", document.getElementById('user_name').value);
-    formData.append("task_name", document.getElementById('task_name').value);
-    formData.append("duration_minutes", durationMinutes);
-    formData.append("before_photo", finalBeforePhoto);
-    formData.append("after_photo", finalAfterPhoto);
-
-    try {
-        const res = await fetch('/api/evaluate-task', { method: 'POST', body: formData });
-        logStep(`📥 Servidor respondió con estatus HTTP: ${res.status}`);
-        
-        const data = await res.json();
-        
-        if(data.status === "finished" || data.status === "success") {
-            logStep("🎉 Tarea evaluada y guardada correctamente.");
-            document.getElementById('step-2').classList.add('hidden');
-            document.getElementById('result-box').classList.remove('hidden');
-
-            document.getElementById('res-user').innerText = `👤 Responsable: ${data.user_name}`;
-            document.getElementById('res-duration').innerText = `⏱️ Duración: ${data.duration_minutes} min`;
-            document.getElementById('res-status').innerText = `✅ Completado: Sí`;
-            document.getElementById('res-points').innerText = `⭐ Puntos obtenidos: +${data.puntos}`;
-            document.getElementById('res-obs').innerText = `📝 Observaciones: ${data.observaciones}`;
+        async function finishTask() {
+            const photoBefore = document.getElementById('before_photo');
+            const photoAfter = document.getElementById('after_photo');
             
-            document.getElementById('link-before').href = data.before_url;
-            document.getElementById('link-after').href = data.after_url;
-        } else {
-            logStep("❌ Error devuelto por la API: " + (data.message || "Desconocido"));
-            btn.innerText = "Finalizar y Calificar con IA";
-            btn.disabled = false;
+            if(photoAfter.files.length === 0) {
+                alert("Por favor toma o selecciona la foto final.");
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+
+            const endTime = new Date();
+            const durationMinutes = Math.max(1, Math.round((endTime - startTime) / 60000));
+
+            let finalBeforePhoto = photoBefore.files[0];
+            let finalAfterPhoto = photoAfter.files[0];
+
+            const compOptions = {
+                maxSizeMB: 1,
+                maxWidthOrHeight: 1280,
+                useWebWorker: true
+            };
+
+            try {
+                btn.innerText = "Comprimiendo fotos...";
+                finalBeforePhoto = await imageCompression(photoBefore.files[0], compOptions);
+                finalAfterPhoto = await imageCompression(photoAfter.files[0], compOptions);
+            } catch (error) {
+                console.error("Error en compresión, usando originales", error);
+            }
+
+            btn.innerText = "Enviando y analizando con IA...";
+
+            const formData = new FormData();
+            formData.append("user_name", document.getElementById('user_name').value);
+            formData.append("task_name", document.getElementById('task_name').value);
+            formData.append("duration_minutes", durationMinutes);
+            formData.append("before_photo", finalBeforePhoto);
+            formData.append("after_photo", finalAfterPhoto);
+
+            try {
+                const res = await fetch('/api/evaluate-task', { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                if(data.status === "finished" || data.status === "success") {
+                    document.getElementById('step-2').classList.add('hidden');
+                    document.getElementById('result-box').classList.remove('hidden');
+
+                    document.getElementById('res-user').innerText = `👤 Responsable: ${data.user_name}`;
+                    document.getElementById('res-duration').innerText = `⏱️ Duración: ${data.duration_minutes} min`;
+                    document.getElementById('res-status').innerText = `✅ Completado: Sí`;
+                    document.getElementById('res-points').innerText = `⭐ Puntos obtenidos: +${data.puntos}`;
+                    document.getElementById('res-obs').innerText = `📝 Observaciones: ${data.observaciones}`;
+                    
+                    document.getElementById('link-before').href = data.before_url;
+                    document.getElementById('link-after').href = data.after_url;
+                } else {
+                    alert("Error al finalizar: " + (data.message || "Desconocido"));
+                    btn.innerText = "Finalizar y Calificar con IA";
+                    btn.disabled = false;
+                }
+            } catch(e) {
+                alert("Error crítico: " + e);
+                btn.innerText = "Finalizar y Calificar con IA";
+                btn.disabled = false;
+            }
         }
-    } catch(e) {
-        logStep("💥 Error crítico de red / fetch: " + e.message);
-        alert("Error crítico: " + e);
-        btn.innerText = "Finalizar y Calificar con IA";
-        btn.disabled = false;
-    }
-}
-        
 
         function resetApp() {
             startTime = null;
