@@ -1,3 +1,4 @@
+%%writefile app.py
 import io
 import os
 import time
@@ -25,11 +26,12 @@ client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 SHEET_NAME = "Registro_Tareas_Hogar"
 
 TASK_POINTS = {
-"Crear y Separar Arenero para Otra Gata": 2000,
+    "Planchar la ropa": 1000,
+    "Crear y Separar Arenero para Otra Gata": 2000,
     "Esterilizar Gata": 1000,
     "Desparasitar Gata": 1000,
     "Limpiar las cacas / arenero": 200,
-    "Trapear los baños": 180,
+    "Lavar los baños": 300,
     "Hacer la comida": 150,
     "Lavar los platos": 150,
     "Doblar la ropa dentro de los clósets": 140,
@@ -121,18 +123,15 @@ async def evaluate_task(
     try:
         timestamp = int(time.time())
         
-        # 1. Leemos los bytes de ambas imágenes
         before_bytes = await before_photo.read()
         after_bytes = await after_photo.read()
         
-        # 2. Subimos las fotos a GitHub (tu repositorio)
         before_filename = f"before_{timestamp}.jpg"
         after_filename = f"after_{timestamp}.jpg"
         
         url_foto_antes = subir_foto_drive_usuario(user_name, before_filename, before_bytes)
         url_foto_despues = subir_foto_drive_usuario(user_name, after_filename, after_bytes)
         
-        # 3. Preparamos la llamada a Gemini
         img_before = Image.open(io.BytesIO(before_bytes))
         img_after = Image.open(io.BytesIO(after_bytes))
         max_score = TASK_POINTS.get(task_name, 100)
@@ -172,7 +171,6 @@ async def evaluate_task(
             traceback.print_exc()
             eval_data = {"completado": True, "puntos": max_score, "observaciones": error_msg}
 
-        # 4. Guardamos en Sheets
         now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
         guardar_en_sheet([
             now_colombia,
@@ -187,7 +185,6 @@ async def evaluate_task(
             url_foto_despues
         ])
 
-        # 5. Retornamos la respuesta al cliente
         return {
             "status": "success",
             "user_name": user_name,

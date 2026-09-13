@@ -32,11 +32,12 @@
             <div>
                 <label class="block text-sm font-medium mb-1 text-slate-300">Seleccionar Tarea:</label>
                 <select id="task_name" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-amber-500">
+                    <option value="Planchar la ropa">Planchar la ropa (1000 pts)</option>
                     <option value="Crear y Separar Arenero para Otra Gata">Crear y Separar Arenero para Otra Gata (2000 pts)</option>
                     <option value="Esterilizar Gata">Esterilizar Gata (1000 pts)</option>
                     <option value="Desparasitar Gata">Desparasitar Gata (1000 pts)</option>
                     <option value="Limpiar las cacas / arenero">Limpiar las cacas / arenero (200 pts)</option>
-                    <option value="Trapear los baños">Trapear los baños (180 pts)</option>
+                    <option value="Lavar los baños">Lavar los baños (300 pts)</option>
                     <option value="Hacer la comida">Hacer la comida (150 pts)</option>
                     <option value="Lavar los platos">Lavar los platos (150 pts)</option>
                     <option value="Doblar la ropa dentro de los clósets">Doblar la ropa dentro de los clósets (140 pts)</option>
@@ -146,7 +147,6 @@
                 return;
             }
 
-            // Delegamos el estado al cliente (sin llamadas de red)
             startTime = new Date();
             
             document.getElementById('step-1').classList.add('hidden');
