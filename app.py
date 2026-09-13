@@ -149,7 +149,7 @@ async def evaluate_task(
         try:
             if client:
                 response = client.models.generate_content(
-                    model='gemini-1.5-flash-latest', 
+                    model='gemini-3.6-flash', 
                     contents=[img_before, img_after, prompt],
                     config=types.GenerateContentConfig(response_mime_type="application/json")
                 )
