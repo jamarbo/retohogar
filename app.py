@@ -33,6 +33,8 @@ TASK_POINTS = {
     "Sacar la ropa de la lavadora": 120,
     "Echar ropa a la lavadora": 110,
     "Botar la basura": 100,
+    "Hacer Mandados Tienda o Droguería": 90,
+    "Tirar la Basura al Shut de Basuras": 90,
     "Lavar la nevera": 90,
     "Trapear la sala": 80,
     "Trapear las habitaciones": 80,
