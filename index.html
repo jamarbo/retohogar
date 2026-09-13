@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reto del Hogar</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-start p-4">
     <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700 relative">
@@ -159,22 +160,43 @@
             }
 
             const btn = event.target;
-            btn.innerText = "Analizando con Gemini y guardando...";
             btn.disabled = true;
 
             // Calculamos el tiempo en minutos
             const endTime = new Date();
             const durationMinutes = Math.max(1, Math.round((endTime - startTime) / 60000));
 
+            // --- INICIO DE COMPRESIÓN EN EL CELULAR ---
+            let finalBeforePhoto = photoBefore.files[0];
+            let finalAfterPhoto = photoAfter.files[0];
+
+            const compOptions = {
+                maxSizeMB: 1,           // Peso máximo de 1MB
+                maxWidthOrHeight: 1280, // Resolución HD (Suficiente para que Gemini vea bien)
+                useWebWorker: true
+            };
+
+            try {
+                btn.innerText = "Comprimiendo fotos en el celular...";
+                // La magia ocurre aquí: reducimos las fotos antes de tocar la red
+                finalBeforePhoto = await imageCompression(photoBefore.files[0], compOptions);
+                finalAfterPhoto = await imageCompression(photoAfter.files[0], compOptions);
+            } catch (error) {
+                console.error("Error comprimiendo, se enviarán las originales", error);
+            }
+            // --- FIN DE COMPRESIÓN ---
+
+            btn.innerText = "Enviando y analizando con Gemini...";
+
             const formData = new FormData();
             formData.append("user_name", document.getElementById('user_name').value);
             formData.append("task_name", document.getElementById('task_name').value);
             formData.append("duration_minutes", durationMinutes);
-            formData.append("before_photo", photoBefore.files[0]);
-            formData.append("after_photo", photoAfter.files[0]);
+            // Enviamos las fotos ya reducidas
+            formData.append("before_photo", finalBeforePhoto);
+            formData.append("after_photo", finalAfterPhoto);
 
             try {
-                // Nuevo endpoint unificado
                 const res = await fetch('/api/evaluate-task', { method: 'POST', body: formData });
                 const data = await res.json();
                 
