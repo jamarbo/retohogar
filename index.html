@@ -115,7 +115,7 @@
     </div>
 
     <script>
-        let currentSessionId = null;
+        let startTime = null;
         let globalPeriodo = 'semana';
 
         function switchTab(tab, periodo = 'semana') {
@@ -134,9 +134,7 @@
             }
         }
 
-        async function startTask() {
-            const userName = document.getElementById('user_name').value;
-            const taskName = document.getElementById('task_name').value;
+        function startTask() {
             const photoInput = document.getElementById('before_photo');
 
             if(photoInput.files.length === 0) {
@@ -144,60 +142,50 @@
                 return;
             }
 
-            const formData = new FormData();
-            formData.append("user_name", userName);
-            formData.append("task_name", taskName);
-            formData.append("before_photo", photoInput.files[0]);
-
-            const btn = event.target;
-            btn.innerText = "Subiendo evidencia inicial...";
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/api/start-task', { method: 'POST', body: formData });
-                const data = await res.json();
-                if(data.status === "started") {
-                    currentSessionId = data.session_id;
-                    document.getElementById('step-1').classList.add('hidden');
-                    document.getElementById('step-2').classList.remove('hidden');
-                } else {
-                    alert("Error: " + data.message);
-                    btn.innerText = "Iniciar Tarea";
-                    btn.disabled = false;
-                }
-            } catch(e) {
-                alert("Error de conexión: " + e);
-                btn.innerText = "Iniciar Tarea";
-                btn.disabled = false;
-            }
+            // Delegamos el estado al cliente (sin llamadas de red)
+            startTime = new Date();
+            
+            document.getElementById('step-1').classList.add('hidden');
+            document.getElementById('step-2').classList.remove('hidden');
         }
 
         async function finishTask() {
-            const photoInput = document.getElementById('after_photo');
-            if(photoInput.files.length === 0) {
+            const photoBefore = document.getElementById('before_photo');
+            const photoAfter = document.getElementById('after_photo');
+            
+            if(photoAfter.files.length === 0) {
                 alert("Por favor toma o selecciona la foto final.");
                 return;
             }
-
-            const formData = new FormData();
-            formData.append("session_id", currentSessionId);
-            formData.append("after_photo", photoInput.files[0]);
 
             const btn = event.target;
             btn.innerText = "Analizando con Gemini y guardando...";
             btn.disabled = true;
 
+            // Calculamos el tiempo en minutos
+            const endTime = new Date();
+            const durationMinutes = Math.max(1, Math.round((endTime - startTime) / 60000));
+
+            const formData = new FormData();
+            formData.append("user_name", document.getElementById('user_name').value);
+            formData.append("task_name", document.getElementById('task_name').value);
+            formData.append("duration_minutes", durationMinutes);
+            formData.append("before_photo", photoBefore.files[0]);
+            formData.append("after_photo", photoAfter.files[0]);
+
             try {
-                const res = await fetch('/api/finish-task', { method: 'POST', body: formData });
+                // Nuevo endpoint unificado
+                const res = await fetch('/api/evaluate-task', { method: 'POST', body: formData });
                 const data = await res.json();
-                if(data.status === "finished") {
+                
+                if(data.status === "finished" || data.status === "success") {
                     document.getElementById('step-2').classList.add('hidden');
                     document.getElementById('result-box').classList.remove('hidden');
 
                     document.getElementById('res-user').innerText = `👤 Responsable: ${data.user_name}`;
                     document.getElementById('res-duration').innerText = `⏱️ Duración: ${data.duration_minutes} min`;
-                    document.getElementById('res-status').innerText = `✅ Completado: ${data.completado ? 'Sí' : 'No'}`;
-                    document.getElementById('res-points').innerText = `⭐ Puntos obtenidos: +${data.puntos} / ${data.max_points}`;
+                    document.getElementById('res-status').innerText = `✅ Completado: Sí`;
+                    document.getElementById('res-points').innerText = `⭐ Puntos obtenidos: +${data.puntos}`;
                     document.getElementById('res-obs').innerText = `📝 Observaciones: ${data.observaciones}`;
                     
                     document.getElementById('link-before').href = data.before_url;
@@ -215,7 +203,7 @@
         }
 
         function resetApp() {
-            currentSessionId = null;
+            startTime = null;
             document.getElementById('result-box').classList.add('hidden');
             document.getElementById('step-2').classList.add('hidden');
             document.getElementById('step-1').classList.remove('hidden');
@@ -254,7 +242,6 @@
                     const third = sorted.length > 2 ? sorted[2] : null;
                     const rest = sorted.slice(3);
 
-                    // 1er Lugar (Con clic habilitado para ver detalle)
                     html += `
                         <div onclick="openDetail('${first[0]}')" class="bg-gradient-to-b from-amber-500/20 to-slate-900 border-2 border-amber-500 rounded-2xl p-4 text-center shadow-lg relative overflow-hidden mb-3 cursor-pointer hover:border-amber-400 transition">
                             <div class="absolute top-2 right-3 text-2xl">👑</div>
@@ -373,7 +360,6 @@
             document.getElementById('modal-detalle').classList.add('hidden');
         }
 
-        // Arrancar directamente mostrando el Podio de la Semana por defecto al cargar la página
         switchTab('podium', 'semana');
     </script>
 </body>

@@ -46,8 +46,6 @@ TASK_POINTS = {
     "Tender la cama": 40
 }
 
-active_sessions = {}
-
 def get_colombia_now():
     return datetime.utcnow() - timedelta(hours=5)
 
@@ -109,116 +107,100 @@ def guardar_en_sheet(fila):
     except Exception as e:
         print(f"❌ Error al guardar en Sheets: {e}")
 
-@app.post("/api/start-task")
-async def start_task(
+@app.post("/api/evaluate-task")
+async def evaluate_task(
     user_name: str = Form(...),
     task_name: str = Form(...),
-    before_photo: UploadFile = File(...)
+    duration_minutes: float = Form(...),
+    before_photo: UploadFile = File(...),
+    after_photo: UploadFile = File(...)
 ):
     try:
         timestamp = int(time.time())
-        session_id = f"{user_name}_{task_name}_{timestamp}"
-        photo_bytes = await before_photo.read()
+        
+        # 1. Leemos los bytes de ambas imágenes
+        before_bytes = await before_photo.read()
+        after_bytes = await after_photo.read()
+        
+        # 2. Subimos las fotos a GitHub (tu repositorio)
+        before_filename = f"before_{timestamp}.jpg"
+        after_filename = f"after_{timestamp}.jpg"
+        
+        url_foto_antes = subir_foto_drive_usuario(user_name, before_filename, before_bytes)
+        url_foto_despues = subir_foto_drive_usuario(user_name, after_filename, after_bytes)
+        
+        # 3. Preparamos la llamada a Gemini
+        img_before = Image.open(io.BytesIO(before_bytes))
+        img_after = Image.open(io.BytesIO(after_bytes))
+        max_score = TASK_POINTS.get(task_name, 100)
+        
+        prompt = (
+            f"Eres el juez calificador del 'Reto del Hogar'.\n"
+            f"Evalúa si la tarea '{task_name}' fue completada correctamente por '{user_name}'.\n"
+            f"Compara Foto 1 (antes) con Foto 2 (después).\n"
+            f"Puntaje máximo: {max_score}.\n"
+            f"Si las fotos no coinciden con la tarea, completado es false y puntos es 0.\n"
+            f"Devuelve estrictamente un JSON válido con estas llaves exactas:\n"
+            f'{{"completado": true, "puntos": {max_score}, "observaciones": "evaluación detallada de 2 frases"}}'
+        )
 
-        filename = f"before_{timestamp}.jpg"
-        drive_url = subir_foto_drive_usuario(user_name, filename, photo_bytes)
+        eval_data = {"completado": True, "puntos": max_score, "observaciones": "Evaluación completada correctamente."}
+        
+        try:
+            if client:
+                response = client.models.generate_content(
+                    model='gemini-1.5-flash',
+                    contents=[img_before, img_after, prompt],
+                    config=types.GenerateContentConfig(response_mime_type="application/json")
+                )
+                raw = response.text.strip()
+                if raw.startswith("```json"):
+                    raw = raw[7:-3].strip()
+                elif raw.startswith("```"):
+                    raw = raw[3:-3].strip()
+                parsed = json.loads(raw)
+                
+                eval_data["completado"] = bool(parsed.get("completado", True))
+                eval_data["puntos"] = int(parsed.get("puntos", max_score))
+                eval_data["observaciones"] = str(parsed.get("observaciones") or parsed.get("observacion") or "Sin observaciones detalladas.")
+        except Exception as e:
+            error_msg = f"Error evaluando con IA: {str(e)}"
+            print(f"❌ {error_msg}")
+            traceback.print_exc()
+            eval_data = {"completado": True, "puntos": max_score, "observaciones": error_msg}
 
-        active_sessions[session_id] = {
+        # 4. Guardamos en Sheets
+        now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
+        guardar_en_sheet([
+            now_colombia,
+            user_name,
+            task_name,
+            duration_minutes,
+            "Sí" if eval_data.get('completado') else "No",
+            eval_data.get('puntos', 0),
+            max_score,
+            eval_data.get('observaciones', ''),
+            url_foto_antes,
+            url_foto_despues
+        ])
+
+        # 5. Retornamos la respuesta al cliente
+        return {
+            "status": "success",
             "user_name": user_name,
-            "task_name": task_name,
-            "start_time": time.time(),
-            "before_photo": photo_bytes,
-            "before_url": drive_url
+            "duration_minutes": duration_minutes,
+            "max_points": max_score,
+            "completado": eval_data.get('completado', False),
+            "puntos": eval_data.get('puntos', 0),
+            "observaciones": eval_data.get('observaciones', ''),
+            "before_url": url_foto_antes,
+            "after_url": url_foto_despues
         }
-        return {"status": "started", "session_id": session_id}
+
     except Exception as e:
-        print(f"❌ Error crítico en start-task: {e}")
-        return {"status": "error", "message": str(e)}
-
-@app.post("/api/finish-task")
-async def finish_task(
-    session_id: str = Form(...),
-    after_photo: UploadFile = File(...)
-):
-    if session_id not in active_sessions:
-        return {"status": "error", "message": "Sesión no encontrada o expirada."}
-
-    session = active_sessions[session_id]
-    duration_minutes = round((time.time() - session["start_time"]) / 60, 2)
-    after_bytes = await after_photo.read()
-
-    timestamp = int(time.time())
-    filename = f"after_{timestamp}.jpg"
-    after_drive_url = subir_foto_drive_usuario(session['user_name'], filename, after_bytes)
-
-    img_before = Image.open(io.BytesIO(session["before_photo"]))
-    img_after = Image.open(io.BytesIO(after_bytes))
-    max_score = TASK_POINTS.get(session['task_name'], 100)
-
-    prompt = (
-        f"Eres el juez calificador del 'Reto del Hogar'.\n"
-        f"Evalúa si la tarea '{session['task_name']}' fue completada correctamente por '{session['user_name']}'.\n"
-        f"Compara Foto 1 (antes) con Foto 2 (después).\n"
-        f"Puntaje máximo: {max_score}.\n"
-        f"Si las fotos no coinciden con la tarea, completado es false y puntos es 0.\n"
-        f"Devuelve estrictamente un JSON válido con estas llaves exactas:\n"
-        f'{{"completado": true, "puntos": {max_score}, "observaciones": "evaluación detallada de 2 frases"}}'
-    )
-
-    eval_data = {"completado": True, "puntos": max_score, "observaciones": "Evaluación completada correctamente."}
-    
-    try:
-        if client:
-            response = client.models.generate_content(
-                model='gemini-3.6-flash',
-                contents=[img_before, img_after, prompt],
-                config=types.GenerateContentConfig(response_mime_type="application/json")
-            )
-            raw = response.text.strip()
-            if raw.startswith("```json"):
-                raw = raw[7:-3].strip()
-            elif raw.startswith("```"):
-                raw = raw[3:-3].strip()
-            parsed = json.loads(raw)
-            
-            eval_data["completado"] = bool(parsed.get("completado", True))
-            eval_data["puntos"] = int(parsed.get("puntos", max_score))
-            eval_data["observaciones"] = str(parsed.get("observaciones") or parsed.get("observacion") or "Sin observaciones detalladas.")
-    except Exception as e:
-        error_msg = f"Error evaluando con IA: {str(e)}"
-        print(f"❌ {error_msg}")
+        print(f"❌ Error en evaluate_task: {e}")
         traceback.print_exc()
-        eval_data = {"completado": True, "puntos": max_score, "observaciones": error_msg}
-
-    now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
-
-    guardar_en_sheet([
-        now_colombia,
-        session['user_name'],
-        session['task_name'],
-        duration_minutes,
-        "Sí" if eval_data.get('completado') else "No",
-        eval_data.get('puntos', 0),
-        max_score,
-        eval_data.get('observaciones', ''),
-        session['before_url'],
-        after_drive_url
-    ])
-
-    url_before = session['before_url']
-    del active_sessions[session_id]
-
-    return {
-        "status": "finished",
-        "user_name": session['user_name'],
-        "duration_minutes": duration_minutes,
-        "max_points": max_score,
-        "completado": eval_data.get('completado', False),
-        "puntos": eval_data.get('puntos', 0),
-        "observaciones": eval_data.get('observaciones', ''),
-        "before_url": url_before,
-        "after_url": after_drive_url
-    }
+        return {"status": "error", "message": str(e)}
 
 @app.get("/api/leaderboard")
 async def get_leaderboard(periodo: str = "hoy"):
