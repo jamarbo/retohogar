@@ -27,7 +27,7 @@ SHEET_NAME = "Registro_Tareas_Hogar"
 TASK_POINTS = {
     "Planchar la ropa": 1000,
     "Crear y Separar Arenero para Otra Gata": 2000,
-    "Esterilizar Gata": 1000,
+    "Esterilizar Gata": 3000,
     "Desparasitar Gata": 1000,
     "Limpiar las cacas / arenero": 200,
     "Lavar los baños": 300,
