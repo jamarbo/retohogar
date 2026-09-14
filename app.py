@@ -16,6 +16,8 @@ from google.auth import default
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
+import base64
+import requests
 
 app = FastAPI(title="Reto del Hogar")
 
@@ -67,9 +69,6 @@ def get_google_credentials():
     else:
         creds, _ = default()
         return creds
-        
-import base64
-import requests
 
 def subir_foto_drive_usuario(user_name, filename, photo_bytes):
     try:
@@ -102,7 +101,7 @@ def subir_foto_drive_usuario(user_name, filename, photo_bytes):
     except Exception as e:
         print(f"❌ Excepción subiendo a GitHub: {e}")
         return "#"
-        
+
 def guardar_en_sheet(fila):
     try:
         creds = get_google_credentials()
@@ -112,6 +111,13 @@ def guardar_en_sheet(fila):
         print("✅ Registro guardado en Sheets con éxito.")
     except Exception as e:
         print(f"❌ Error al guardar en Sheets: {e}")
+
+@app.get("/saludo")
+async def saludo():
+    return {
+        "proyecto": "RetoHogar",
+        "mensaje": "¡Bienvenido al proyecto RetoHogar! Tu plataforma para gamificar y organizar las tareas del hogar."
+    }
 
 @app.post("/api/evaluate-task")
 async def evaluate_task(
@@ -143,7 +149,7 @@ async def evaluate_task(
             f"Compara Foto 1 (antes) con Foto 2 (después).\n"
             f"Puntaje máximo: {max_score}.\n"
             f"Si las fotos no coinciden con la tarea, completado es false y puntos es 0.\n"
-            f"Devuelve estrictamente un JSON válido con estas llaves exactas:\n"
+            f"Devuelve strictly un JSON válido con estas llaves exactas:\n"
             f'{{"completado": true, "puntos": {max_score}, "observaciones": "evaluación detallada de 2 frases"}}'
         )
 
@@ -412,12 +418,9 @@ async def get_user_tasks(user: str, periodo: str = "semana"):
 
     return user_tasks
 
-    # Añade este endpoint en app.py para manejar el webhook de WhatsApp
-
 @app.post("/api/whatsapp-webhook")
 async def whatsapp_webhook(payload: dict):
     try:
-        # Estructura básica de recepción para pasarelas de WhatsApp (ej. Evolution API / Meta)
         message_data = payload.get("entry", [{}])[0].get("changes", [{}])[0].get("value", {})
         messages = message_data.get("messages", [])
         
@@ -428,19 +431,12 @@ async def whatsapp_webhook(payload: dict):
         sender_phone = msg.get("from", "")
         message_body = msg.get("text", {}).get("body", "").lower()
         
-        # Identificar si el mensaje es tuyo (Administrador confirmando giro)
-        # Puedes registrar tu número de WhatsApp administrativo en las variables de entorno
         admin_phone = os.environ.get("ADMIN_WHATSAPP_PHONE", "573000000000") 
         
         if sender_phone == admin_phone and ("ya giré" in message_body or "girado" in message_body or "enviado" in message_body):
-            # Lógica para registrar el reseteo del peticionario mencionado o activo
-            # Aqui actualizaríamos la hoja de control de giros para reiniciar su tramo de 1000 puntos
             return {"status": "success", "action": "admin_reset_processed"}
 
-        # Si es una petición de dinero de las niñas
         if "plata" in message_body or "dinero" in message_body or "prestame" in message_body or "necesito" in message_body:
-            # Aquí la IA evaluará los puntos actuales de la semana frente a su último corte registrado
-            # Si tiene >= 1000 puntos nuevos desde el último giro, el bot responde que puede recibir hasta $20.000
             response_text = "🤖 Evaluando tus puntos en el Reto del Hogar... Si superas los 1,000 puntos nuevos desde tu último giro, puedes recibir hasta $20,000. Esperando aprobación de Papá en el grupo."
             return {"status": "success", "reply": response_text}
             
