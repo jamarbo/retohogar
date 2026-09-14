@@ -14,21 +14,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create feature branch and make change
+      - name: Make automatic change
         run: |
-          BRANCH_NAME="feature/issue-${{ github.event.issue.number }}"
-          git checkout -b $BRANCH_NAME
-          
-          # Escribimos el cambio de prueba en un archivo
-          echo "Requerimiento desde el celular: ${{ github.event.issue.title }}" >> cambios_recientes.txt
-          
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add cambios_recientes.txt
-          git commit -m "feat: respuesta automatizada para issue #${{ github.event.issue.number }}"
-          git push origin $BRANCH_NAME
+          # Modificamos un archivo para que haya un cambio real en el PR
+          echo "Requerimiento de la Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}" >> cambios_recientes.txt
 
-      - name: Open Pull Request
+      - name: Open Pull Request Automatically
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -36,10 +27,11 @@ jobs:
           base: "main"
           title: "Auto-PR: ${{ github.event.issue.title }}"
           body: |
-            Este Pull Request fue generado automáticamente a partir de la Issue #${{ github.event.issue.number }}.
+            Pull request generado automáticamente desde la Issue #${{ github.event.issue.number }}.
             
-            **Descripción del requerimiento:**
+            **Descripción:**
             ${{ github.event.issue.body }}
-          commit-message: "Generar PR automático desde Issue"
+          commit-message: "feat: cambio automático por issue #${{ github.event.issue.number }}"
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           signoff: false
           delete-branch: true
