@@ -5,17 +5,46 @@ on:
     types: [opened, edited]
 
 jobs:
-  process-issue:
+  create-pull-request:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Process user request from Issue
+      - name: Extract Issue Info
+        id: issue_info
         run: |
-          echo "Título de la Issue: ${{ github.event.issue.title }}"
-          echo "Cuerpo de la Issue: ${{ github.event.issue.body }}"
-          # Aquí puedes integrar un script de Python que tome este texto,
-          # modifique los archivos de FastAPI necesarios y abra el Pull Request.
+          echo "TITLE=${{ github.event.issue.title }}" >> $GITHUB_ENV
+          echo "BODY=${{ github.event.issue.body }}" >> $GITHUB_ENV
+
+      - name: Create feature branch and make change
+        run: |
+          # Creamos un nombre de rama basado en el número de la Issue
+          BRANCH_NAME="feature/issue-${{ github.event.issue.number }}"
+          git checkout -b $BRANCH_NAME
           
-      # Nota: Usaremos las acciones nativas de GitHub para crear la rama/PR automáticamente
+          # Simulamos o escribimos el cambio en un archivo de prueba o registro
+          echo "Requerimiento desde el celular: ${{ github.event.issue.title }}" >> cambios_recientes.txt
+          
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add cambios_recientes.txt
+          git commit -m "feat: respuesta automatizada para issue #${{ github.event.issue.number }}"
+          git push origin $BRANCH_NAME
+
+      - name: Open Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: "feature/issue-${{ github.event.issue.number }}"
+          base: "main"
+          title: "Auto-PR: ${{ github.event.issue.title }}"
+          body: |
+            Este Pull Request fue generado automáticamente a partir de la Issue #${{ github.event.issue.number }}.
+            
+            **Descripción del requerimiento:**
+            ${{ github.event.issue.body }}
+          commit-message: "Generar PR automático desde Issue"
