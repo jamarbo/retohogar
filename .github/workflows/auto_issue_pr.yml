@@ -1,0 +1,21 @@
+name: Voice to PR Agent
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  process-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Process user request from Issue
+        run: |
+          echo "Título de la Issue: ${{ github.event.issue.title }}"
+          echo "Cuerpo de la Issue: ${{ github.event.issue.body }}"
+          # Aquí puedes integrar un script de Python que tome este texto,
+          # modifique los archivos de FastAPI necesarios y abra el Pull Request.
+          
+      # Nota: Usaremos las acciones nativas de GitHub para crear la rama/PR automáticamente
