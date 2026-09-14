@@ -282,7 +282,7 @@ async def get_leaderboard(periodo: str = "hoy"):
     return totales
 
 @app.get("/api/cooperative-goal")
-async def get_cooperative_goal(meta_semanal: int = 10000):
+async def get_cooperative_goal(meta_semanal: int = 12000):
     total_puntos_semana = 0
     try:
         creds = get_google_credentials()
@@ -411,6 +411,43 @@ async def get_user_tasks(user: str, periodo: str = "semana"):
         return {"error": str(e)}
 
     return user_tasks
+
+    # Añade este endpoint en app.py para manejar el webhook de WhatsApp
+
+@app.post("/api/whatsapp-webhook")
+async def whatsapp_webhook(payload: dict):
+    try:
+        # Estructura básica de recepción para pasarelas de WhatsApp (ej. Evolution API / Meta)
+        message_data = payload.get("entry", [{}])[0].get("changes", [{}])[0].get("value", {})
+        messages = message_data.get("messages", [])
+        
+        if not messages:
+            return {"status": "ignored", "reason": "No messages found"}
+            
+        msg = messages[0]
+        sender_phone = msg.get("from", "")
+        message_body = msg.get("text", {}).get("body", "").lower()
+        
+        # Identificar si el mensaje es tuyo (Administrador confirmando giro)
+        # Puedes registrar tu número de WhatsApp administrativo en las variables de entorno
+        admin_phone = os.environ.get("ADMIN_WHATSAPP_PHONE", "573000000000") 
+        
+        if sender_phone == admin_phone and ("ya giré" in message_body or "girado" in message_body or "enviado" in message_body):
+            # Lógica para registrar el reseteo del peticionario mencionado o activo
+            # Aqui actualizaríamos la hoja de control de giros para reiniciar su tramo de 1000 puntos
+            return {"status": "success", "action": "admin_reset_processed"}
+
+        # Si es una petición de dinero de las niñas
+        if "plata" in message_body or "dinero" in message_body or "prestame" in message_body or "necesito" in message_body:
+            # Aquí la IA evaluará los puntos actuales de la semana frente a su último corte registrado
+            # Si tiene >= 1000 puntos nuevos desde el último giro, el bot responde que puede recibir hasta $20.000
+            response_text = "🤖 Evaluando tus puntos en el Reto del Hogar... Si superas los 1,000 puntos nuevos desde tu último giro, puedes recibir hasta $20,000. Esperando aprobación de Papá en el grupo."
+            return {"status": "success", "reply": response_text}
+            
+        return {"status": "received"}
+    except Exception as e:
+        print(f"❌ Error en webhook de WhatsApp: {e}")
+        return {"status": "error", "message": str(e)}
 
 @app.get("/")
 async def home():
