@@ -25,10 +25,11 @@ client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 SHEET_NAME = "Registro_Tareas_Hogar"
 
 TASK_POINTS = {
-    "Planchar la ropa": 1000,
-    "Crear y Separar Arenero para Otra Gata": 2000,
     "Esterilizar Gata": 3000,
+    "Crear y Separar Arenero para Otra Gata": 2000,
+    "Planchar la ropa": 1000,
     "Desparasitar Gata": 1000,
+    "Arrancar Proyecto de Ortodoncia":500, 
     "Limpiar las cacas / arenero": 200,
     "Lavar los baños": 300,
     "Hacer la comida": 150,
