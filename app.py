@@ -29,7 +29,7 @@ TASK_POINTS = {
     "Crear y Separar Arenero para Otra Gata": 2000,
     "Planchar la ropa": 1000,
     "Desparasitar Gata": 1000,
-    "Arrancar Proyecto de Ortodoncia":500, 
+    "Arrancar Proyecto de Ortodoncia": 500, 
     "Limpiar las cacas / arenero": 200,
     "Lavar los baños": 300,
     "Hacer la comida": 300,
@@ -151,7 +151,6 @@ async def evaluate_task(
         
         try:
             if client:
-                # Reintento simple en caso de saturación temporal (503)
                 response = None
                 for intento in range(3):
                     try:
@@ -163,7 +162,7 @@ async def evaluate_task(
                         break
                     except Exception as api_err:
                         if "503" in str(api_err) and intento < 2:
-                            time.sleep(2) # Espera 2 segundos antes de reintentar
+                            time.sleep(2)
                             continue
                         raise api_err
 
@@ -182,7 +181,6 @@ async def evaluate_task(
             print(f"❌ {error_msg}")
             traceback.print_exc()
             eval_data = {"completado": True, "puntos": max_score, "observaciones": error_msg}
-
 
         now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
         guardar_en_sheet([
@@ -282,6 +280,50 @@ async def get_leaderboard(periodo: str = "hoy"):
             totales["Elizabeth Parra"]["tareas"] += 1
 
     return totales
+
+@app.get("/api/cooperative-goal")
+async def get_cooperative_goal(meta_semanal: int = 10000):
+    total_puntos_semana = 0
+    try:
+        creds = get_google_credentials()
+        gc = gspread.authorize(creds)
+        sheet = gc.open(SHEET_NAME).sheet1
+        filas = sheet.get_all_values()
+        
+        if len(filas) > 1:
+            now = get_colombia_now()
+            hoy_date = now.date()
+            inicio_semana_date = hoy_date - timedelta(days=hoy_date.weekday())
+            
+            for fila in filas[1:]:
+                if len(fila) < 6:
+                    continue
+                fecha_str = str(fila[0]).strip()
+                completado_val = str(fila[4]).strip().lower()
+                puntos_str = str(fila[5]).strip()
+                
+                if completado_val not in ["sí", "si", "true", "1", "yes"]:
+                    continue
+                try:
+                    fila_date = datetime.strptime(fecha_str[:10], "%Y-%m-%d").date()
+                except ValueError:
+                    continue
+                
+                if fila_date >= inicio_semana_date:
+                    try:
+                        total_puntos_semana += int(puntos_str)
+                    except ValueError:
+                        pass
+    except Exception as e:
+        print(f"Error calculando meta grupal: {e}")
+        
+    porcentaje = min(100, int((total_puntos_semana / meta_semanal) * 100))
+    return {
+        "puntos_actuales": total_puntos_semana,
+        "meta": meta_semanal,
+        "porcentaje": porcentaje,
+        "completada": total_puntos_semana >= meta_semanal
+    }
 
 @app.get("/api/user-tasks")
 async def get_user_tasks(user: str, periodo: str = "semana"):
