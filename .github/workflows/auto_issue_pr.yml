@@ -32,9 +32,7 @@ jobs:
           python - <<'EOF'
           import os
           from google import genai
-          from google.genai import types
 
-          # Inicializamos el cliente oficial de Gemini
           client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
           issue_title = os.environ['ISSUE_TITLE']
@@ -42,7 +40,6 @@ jobs:
 
           print(f"Procesando requerimiento: {issue_title}")
 
-          # Leemos el archivo app.py actual para darle contexto a la IA
           with open("app.py", "r", encoding="utf-8") as f:
               current_code = f.read()
 
@@ -58,15 +55,13 @@ jobs:
           Devuelve ÚNICAMENTE el código Python completo y actualizado para app.py, sin bloques de texto markdown adicionales ni explicaciones, solo el código puro listo para guardarse.
           """
 
-          # Usamos gemini-2.5-flash para procesar el cambio de código de forma rápida
           response = client.models.generate_content(
-              model='gemini-2.5-flash',
+              model='gemini-3.6-flash',
               contents=prompt,
           )
 
           new_code = response.text.strip()
           
-          # Limpiamos por si la IA devuelve bloques de código markdown
           if new_code.startswith("```python"):
               new_code = new_code[9:]
           if new_code.startswith("```"):
@@ -75,7 +70,6 @@ jobs:
               new_code = new_code[:-3]
           new_code = new_code.strip()
 
-          # Guardamos el nuevo código en app.py
           with open("app.py", "w", encoding="utf-8") as f:
               f.write(new_code)
           
