@@ -123,10 +123,16 @@
     <!-- Modal de Detalle de Tareas del Usuario -->
     <div id="modal-detalle" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-700 w-full max-w-lg rounded-2xl p-5 shadow-2xl max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-700 pb-3">
                 <h2 id="modal-title" class="text-lg font-bold text-amber-400">Detalle de Tareas</h2>
                 <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
             </div>
+            
+            <!-- Buscador y Filtro en el historial -->
+            <div class="mb-3">
+                <input type="text" id="task-search-input" oninput="filterUserTasks()" placeholder="🔍 Buscar por nombre de tarea u observaciones..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+            </div>
+
             <div id="modal-body" class="overflow-y-auto space-y-4 pr-1 flex-1">
                 <!-- Tarjetas de tareas individuales -->
             </div>
@@ -137,6 +143,8 @@
     <script>
         let startTime = null;
         let globalPeriodo = 'semana';
+        let allUserTasksCache = [];
+        let currentUserNameCache = "";
 
         function switchTab(tab, periodo = 'semana') {
             if(tab === 'task') {
@@ -359,7 +367,9 @@
         }
 
         async function openDetail(userName) {
+            currentUserNameCache = userName;
             document.getElementById('modal-title').innerText = `Tareas de ${userName}`;
+            document.getElementById('task-search-input').value = "";
             document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">Cargando tareas...</p>`;
             document.getElementById('modal-detalle').classList.remove('hidden');
 
@@ -370,41 +380,55 @@
                     throw new Error("Error en el servidor al obtener las tareas.");
                 }
 
-                const tasks = await res.json();
+                allUserTasksCache = await res.json();
+                renderTaskList(allUserTasksCache);
 
-                if(!Array.isArray(tasks) || tasks.length === 0) {
-                    document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">No hay tareas registradas en este período.</p>`;
-                    return;
-                }
-
-                let html = "";
-                tasks.forEach((t) => {
-                    html += `
-                        <div class="bg-slate-900 border border-slate-700 rounded-xl p-3.5 space-y-2 text-xs">
-                            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                                <span class="font-bold text-amber-400 text-sm">${t.task_name}</span>
-                                <span class="bg-amber-500/10 text-amber-300 font-semibold px-2 py-0.5 rounded">${t.puntos} pts</span>
-                            </div>
-                            <div class="text-slate-400 flex justify-between">
-                                <span>📅 ${t.fecha}</span>
-                                <span>⏱️ ${t.duracion} min</span>
-                            </div>
-                            <div class="bg-slate-800/60 p-2 rounded space-y-1">
-                                <span class="text-amber-300 font-semibold block">📝 Observaciones:</span>
-                                <p class="text-slate-300 italic">${t.observaciones || 'Sin observaciones'}</p>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2 pt-1">
-                                <a href="${t.before_url}" target="_blank" class="block text-center bg-slate-800 hover:bg-slate-700 text-amber-300 py-2 rounded-lg font-medium transition border border-slate-700">📸 Ver Antes</a>
-                                <a href="${t.after_url}" target="_blank" class="block text-center bg-slate-800 hover:bg-slate-700 text-emerald-300 py-2 rounded-lg font-medium transition border border-slate-700">🏁 Ver Después</a>
-                            </div>
-                        </div>
-                    `;
-                });
-                document.getElementById('modal-body').innerHTML = html;
             } catch(e) {
                 console.error(e);
                 document.getElementById('modal-body').innerHTML = `<p class="text-center text-red-400 py-4">Error al cargar el detalle.</p>`;
             }
+        }
+
+        function renderTaskList(tasks) {
+            if(!Array.isArray(tasks) || tasks.length === 0) {
+                document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">No hay tareas registradas que coincidan.</p>`;
+                return;
+            }
+
+            let html = "";
+            tasks.forEach((t) => {
+                html += `
+                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-3.5 space-y-2 text-xs">
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                            <span class="font-bold text-amber-400 text-sm">${t.task_name}</span>
+                            <span class="bg-amber-500/10 text-amber-300 font-semibold px-2 py-0.5 rounded">${t.puntos} pts</span>
+                        </div>
+                        <div class="text-slate-400 flex justify-between">
+                            <span>📅 ${t.fecha}</span>
+                            <span>⏱️ ${t.duracion} min</span>
+                        </div>
+                        <div class="bg-slate-800/60 p-2 rounded space-y-1">
+                            <span class="text-amber-300 font-semibold block">📝 Observaciones:</span>
+                            <p class="text-slate-300 italic">${t.observaciones || 'Sin observaciones'}</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                            <a href="${t.before_url}" target="_blank" class="block text-center bg-slate-800 hover:bg-slate-700 text-amber-300 py-2 rounded-lg font-medium transition border border-slate-700">📸 Ver Antes</a>
+                            <a href="${t.after_url}" target="_blank" class="block text-center bg-slate-800 hover:bg-slate-700 text-emerald-300 py-2 rounded-lg font-medium transition border border-slate-700">🏁 Ver Después</a>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('modal-body').innerHTML = html;
+        }
+
+        function filterUserTasks() {
+            const query = document.getElementById('task-search-input').value.toLowerCase();
+            const filtered = allUserTasksCache.filter(t => 
+                t.task_name.toLowerCase().includes(query) || 
+                (t.observaciones && t.observaciones.toLowerCase().includes(query)) ||
+                t.fecha.includes(query)
+            );
+            renderTaskList(filtered);
         }
 
         function closeModal() {
