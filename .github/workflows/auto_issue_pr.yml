@@ -1,11 +1,11 @@
-name: Voice to PR Agent
+name: Voice to PR Agent with Gemini
 
 on:
   issues:
     types: [opened, edited]
 
 jobs:
-  create-pull-request:
+  gemini-developer:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -14,24 +14,87 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Make automatic change
-        run: |
-          # Modificamos un archivo para que haya un cambio real en el PR
-          echo "Requerimiento de la Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}" >> cambios_recientes.txt
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-      - name: Open Pull Request Automatically
+      - name: Install dependencies
+        run: |
+          pip install google-genai requests
+
+      - name: Run Gemini AI Developer Agent
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          python - <<'EOF'
+          import os
+          from google import genai
+          from google.genai import types
+
+          # Inicializamos el cliente oficial de Gemini
+          client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+
+          issue_title = os.environ['ISSUE_TITLE']
+          issue_body = os.environ['ISSUE_BODY']
+
+          print(f"Procesando requerimiento: {issue_title}")
+
+          # Leemos el archivo app.py actual para darle contexto a la IA
+          with open("app.py", "r", encoding="utf-8") as f:
+              current_code = f.read()
+
+          prompt = f"""
+          Eres un desarrollador backend experto en FastAPI. Basado en la siguiente solicitud del usuario:
+          Título: {issue_title}
+          Descripción: {issue_body}
+
+          Este es el contenido actual de app.py:
+          {current_code}
+
+          Modifica el código de app.py para cumplir con lo que pide el usuario. 
+          Devuelve ÚNICAMENTE el código Python completo y actualizado para app.py, sin bloques de texto markdown adicionales ni explicaciones, solo el código puro listo para guardarse.
+          """
+
+          # Usamos gemini-2.5-flash para procesar el cambio de código de forma rápida
+          response = client.models.generate_content(
+              model='gemini-2.5-flash',
+              contents=prompt,
+          )
+
+          new_code = response.text.strip()
+          
+          # Limpiamos por si la IA devuelve bloques de código markdown
+          if new_code.startswith("```python"):
+              new_code = new_code[9:]
+          if new_code.startswith("```"):
+              new_code = new_code[3:]
+          if new_code.endswith("```"):
+              new_code = new_code[:-3]
+          new_code = new_code.strip()
+
+          # Guardamos el nuevo código en app.py
+          with open("app.py", "w", encoding="utf-8") as f:
+              f.write(new_code)
+          
+          print("¡app.py actualizado exitosamente por Gemini!")
+          EOF
+
+      - name: Open Pull Request with Gemini Changes
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          branch: "feature/issue-${{ github.event.issue.number }}"
+          branch: "feature/gemini-issue-${{ github.event.issue.number }}"
           base: "main"
-          title: "Auto-PR: ${{ github.event.issue.title }}"
+          title: "Gemini AI PR: ${{ github.event.issue.title }}"
           body: |
-            Pull request generado automáticamente desde la Issue #${{ github.event.issue.number }}.
+            🤖 Este Pull Request fue programado e implementado automáticamente por **Gemini AI** a partir de tu Issue.
             
-            **Descripción:**
+            **Requerimiento del usuario:**
             ${{ github.event.issue.body }}
-          commit-message: "feat: cambio automático por issue #${{ github.event.issue.number }}"
+          commit-message: "feat(ai): código generado por Gemini para issue #${{ github.event.issue.number }}"
           author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           signoff: false
           delete-branch: true
