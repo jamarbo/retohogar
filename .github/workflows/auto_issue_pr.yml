@@ -14,19 +14,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract Issue Info
-        id: issue_info
-        run: |
-          echo "TITLE=${{ github.event.issue.title }}" >> $GITHUB_ENV
-          echo "BODY=${{ github.event.issue.body }}" >> $GITHUB_ENV
-
       - name: Create feature branch and make change
         run: |
-          # Creamos un nombre de rama basado en el número de la Issue
           BRANCH_NAME="feature/issue-${{ github.event.issue.number }}"
           git checkout -b $BRANCH_NAME
           
-          # Simulamos o escribimos el cambio en un archivo de prueba o registro
+          # Escribimos el cambio de prueba en un archivo
           echo "Requerimiento desde el celular: ${{ github.event.issue.title }}" >> cambios_recientes.txt
           
           git config --global user.name "github-actions[bot]"
@@ -48,3 +41,5 @@ jobs:
             **Descripción del requerimiento:**
             ${{ github.event.issue.body }}
           commit-message: "Generar PR automático desde Issue"
+          signoff: false
+          delete-branch: true
