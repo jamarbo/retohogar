@@ -107,25 +107,25 @@
 
         <!-- Sección Podio Real -->
         <div id="section-podium" class="space-y-4">
-            <!-- Widget de Desafío Cooperativo Grupal -->
-            <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-amber-500/40 rounded-2xl p-4 shadow-lg mb-4 space-y-2">
-                <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold text-amber-400">🤝 Meta Grupal Semanal</span>
-                    <span id="coop-status" class="text-xs font-semibold text-slate-300">Cargando...</span>
-                </div>
-                <div class="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-slate-700">
-                    <div id="coop-progress-bar" class="bg-amber-500 h-3 rounded-full transition-all duration-500 w-0"></div>
-                </div>
-                <div class="flex justify-between text-[10px] text-slate-400">
-                    <span id="coop-current">0 pts</span>
-                    <span id="coop-goal">Meta: 10,000 pts</span>
-                </div>
-            </div>
-
             <div class="flex justify-center gap-2 mb-4">
                 <button onclick="loadLeaderboard('hoy')" id="p-hoy" class="px-3 py-1 bg-slate-700 text-slate-300 text-xs rounded-full">Hoy</button>
                 <button onclick="loadLeaderboard('semana')" id="p-semana" class="px-3 py-1 bg-amber-500 text-slate-900 font-bold text-xs rounded-full shadow">Esta Semana</button>
                 <button onclick="loadLeaderboard('mes')" id="p-mes" class="px-3 py-1 bg-slate-700 text-slate-300 text-xs rounded-full">Este Mes</button>
+            </div>
+
+            <!-- Tarjeta de Reto Grupal con Mensaje Explicativo -->
+            <div id="group-challenge-card" class="bg-gradient-to-r from-amber-500/10 to-slate-900 border border-amber-500/40 rounded-2xl p-4 space-y-2 mb-4 shadow-md">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">🤝 Reto Grupal Semanal</span>
+                    <span id="group-challenge-points" class="text-xs font-extrabold text-amber-300">0 / 8,000 pts</span>
+                </div>
+                <!-- Barra de Progreso Grupal -->
+                <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div id="group-progress-bar" class="bg-amber-500 h-2 rounded-full transition-all duration-500" style="width: 0%;"></div>
+                </div>
+                <p class="text-[11px] text-slate-300 leading-tight">
+                    💡 <strong class="text-amber-300">¿Qué pasa si lo logramos?</strong> Al alcanzar la meta conjunta de la familia antes de finalizar la semana, <span class="text-amber-200">se desbloquea una recompensa en equipo</span> (como una salida especial o una cena en conjunto).
+                </p>
             </div>
 
             <div id="podium-content" class="space-y-3">
@@ -142,9 +142,8 @@
                 <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
             </div>
             
-            <!-- Buscador y Filtro en el historial -->
             <div class="mb-3">
-                <input type="text" id="task-search-input" oninput="filterUserTasks()" placeholder="🔍 Buscar por nombre de tarea u observaciones..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+                <input type="text" id="filter-tasks" oninput="filterUserTasks()" placeholder="🔍 Buscar por nombre de tarea..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
             </div>
 
             <div id="modal-body" class="overflow-y-auto space-y-4 pr-1 flex-1">
@@ -157,8 +156,7 @@
     <script>
         let startTime = null;
         let globalPeriodo = 'semana';
-        let allUserTasksCache = [];
-        let currentUserNameCache = "";
+        let allUserTasks = [];
 
         function switchTab(tab, periodo = 'semana') {
             if(tab === 'task') {
@@ -173,7 +171,6 @@
                 document.getElementById('btn-task').className = "flex-1 py-2 rounded-md font-medium text-sm transition text-slate-300";
                 globalPeriodo = periodo;
                 loadLeaderboard(periodo);
-                loadCooperativeGoal();
             }
         }
 
@@ -290,27 +287,6 @@
             document.getElementById('progress-bar').style.width = "1/3";
         }
 
-        async function loadCooperativeGoal() {
-            try {
-                const res = await fetch('/api/cooperative-goal');
-                const data = await res.json();
-                
-                document.getElementById('coop-current').innerText = `${data.puntos_actuales.toLocaleString()} pts`;
-                document.getElementById('coop-goal').innerText = `Meta: ${data.meta.toLocaleString()} pts`;
-                document.getElementById('coop-progress-bar').style.width = `${data.porcentaje}%`;
-                
-                if(data.completada) {
-                    document.getElementById('coop-status').innerText = "🎉 ¡Meta Conseguida!";
-                    document.getElementById('coop-status').className = "text-xs font-bold text-emerald-400 animate-pulse";
-                    document.getElementById('coop-progress-bar').className = "bg-emerald-500 h-3 rounded-full transition-all duration-500";
-                } else {
-                    document.getElementById('coop-status').innerText = `${data.porcentaje}% Completado`;
-                }
-            } catch(e) {
-                console.error("Error cargando desafío cooperativo:", e);
-            }
-        }
-
         async function loadLeaderboard(periodo) {
             globalPeriodo = periodo;
             ['hoy', 'semana', 'mes'].forEach(p => {
@@ -322,12 +298,32 @@
                 }
             });
 
+            // Mostrar u ocultar la tarjeta de reto grupal según el período (idealmente aplica para la semana o mes)
+            const groupCard = document.getElementById('group-challenge-card');
+            if(periodo === 'hoy') {
+                groupCard.style.display = 'none';
+            } else {
+                groupCard.style.display = 'block';
+            }
+
             try {
                 const res = await fetch(`/api/leaderboard?periodo=${periodo}`);
                 const data = await res.json();
                 
                 const sorted = Object.entries(data).sort((a,b) => b[1].puntos - a[1].puntos);
                 
+                // Calcular puntos totales de la familia para el reto grupal
+                let totalGroupPoints = 0;
+                Object.values(data).forEach(info => {
+                    totalGroupPoints += info.puntos;
+                });
+
+                const targetGoal = periodo === 'mes' ? 32000 : 8000;
+                const percentage = Math.min(100, Math.round((totalGroupPoints / targetGoal) * 100));
+
+                document.getElementById('group-challenge-points').innerText = `${totalGroupPoints.toLocaleString()} / ${targetGoal.toLocaleString()} pts (${percentage}%)`;
+                document.getElementById('group-progress-bar').style.width = `${percentage}%`;
+
                 let html = "";
                 
                 if(sorted.length > 0) {
@@ -402,9 +398,8 @@
         }
 
         async function openDetail(userName) {
-            currentUserNameCache = userName;
             document.getElementById('modal-title').innerText = `Tareas de ${userName}`;
-            document.getElementById('task-search-input').value = "";
+            document.getElementById('filter-tasks').value = "";
             document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">Cargando tareas...</p>`;
             document.getElementById('modal-detalle').classList.remove('hidden');
 
@@ -415,9 +410,14 @@
                     throw new Error("Error en el servidor al obtener las tareas.");
                 }
 
-                allUserTasksCache = await res.json();
-                renderTaskList(allUserTasksCache);
+                allUserTasks = await res.json();
 
+                if(!Array.isArray(allUserTasks) || allUserTasks.length === 0) {
+                    document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">No hay tareas registradas en este período.</p>`;
+                    return;
+                }
+
+                renderTaskList(allUserTasks);
             } catch(e) {
                 console.error(e);
                 document.getElementById('modal-body').innerHTML = `<p class="text-center text-red-400 py-4">Error al cargar el detalle.</p>`;
@@ -425,11 +425,6 @@
         }
 
         function renderTaskList(tasks) {
-            if(!Array.isArray(tasks) || tasks.length === 0) {
-                document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">No hay tareas registradas que coincidan.</p>`;
-                return;
-            }
-
             let html = "";
             tasks.forEach((t) => {
                 html += `
@@ -457,13 +452,17 @@
         }
 
         function filterUserTasks() {
-            const query = document.getElementById('task-search-input').value.toLowerCase();
-            const filtered = allUserTasksCache.filter(t => 
+            const query = document.getElementById('filter-tasks').value.toLowerCase();
+            const filtered = allUserTasks.filter(t => 
                 t.task_name.toLowerCase().includes(query) || 
-                (t.observaciones && t.observaciones.toLowerCase().includes(query)) ||
-                t.fecha.includes(query)
+                t.observaciones.toLowerCase().includes(query)
             );
-            renderTaskList(filtered);
+
+            if(filtered.length === 0) {
+                document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">No se encontraron tareas que coincidan con la búsqueda.</p>`;
+            } else {
+                renderTaskList(filtered);
+            }
         }
 
         function closeModal() {
@@ -471,7 +470,6 @@
         }
 
         switchTab('podium', 'semana');
-        loadCooperativeGoal();
     </script>
 </body>
 </html>
