@@ -77,6 +77,19 @@
                 <button onclick="finishTask()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold py-3 rounded-lg transition shadow-lg">Finalizar y Calificar con IA</button>
             </div>
 
+            <!-- Indicador Visual de Carga / Progreso -->
+            <div id="loading-box" class="hidden mt-6 p-5 bg-slate-900 rounded-xl border border-amber-500/40 text-center space-y-4 shadow-lg">
+                <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-amber-500 border-t-transparent"></div>
+                <div class="space-y-1">
+                    <p id="loading-status-text" class="font-bold text-amber-400 text-sm">Procesando evidencias...</p>
+                    <p class="text-xs text-slate-400">Por favor no cierres la ventana mientras la IA evalúa tu esfuerzo.</p>
+                </div>
+                <!-- Barra de progreso visual -->
+                <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                    <div id="progress-bar" class="bg-amber-500 h-2.5 rounded-full transition-all duration-500 w-1/3"></div>
+                </div>
+            </div>
+
             <!-- Resultado de la IA -->
             <div id="result-box" class="hidden mt-6 p-4 bg-slate-900 rounded-xl border border-slate-700 space-y-2">
                 <h3 class="font-bold text-amber-400 text-lg">⚖️ Veredicto de la IA</h3>
@@ -166,6 +179,13 @@
 
             const btn = event.target;
             btn.disabled = true;
+            document.getElementById('step-2').classList.add('hidden');
+            
+            // Mostrar panel de carga visual
+            const loadingBox = document.getElementById('loading-box');
+            const statusText = document.getElementById('loading-status-text');
+            const progressBar = document.getElementById('progress-bar');
+            loadingBox.classList.remove('hidden');
 
             const endTime = new Date();
             const durationMinutes = Math.max(1, Math.round((endTime - startTime) / 60000));
@@ -180,14 +200,16 @@
             };
 
             try {
-                btn.innerText = "Comprimiendo fotos...";
+                statusText.innerText = "Comprimiendo fotos para optimizar espacio...";
+                progressBar.style.width = "40%";
                 finalBeforePhoto = await imageCompression(photoBefore.files[0], compOptions);
                 finalAfterPhoto = await imageCompression(photoAfter.files[0], compOptions);
             } catch (error) {
                 console.error("Error en compresión, usando originales", error);
             }
 
-            btn.innerText = "Enviando y analizando con IA...";
+            statusText.innerText = "Subiendo evidencias y analizando con IA...";
+            progressBar.style.width = "80%";
 
             const formData = new FormData();
             formData.append("user_name", document.getElementById('user_name').value);
@@ -200,26 +222,31 @@
                 const res = await fetch('/api/evaluate-task', { method: 'POST', body: formData });
                 const data = await res.json();
                 
-                if(data.status === "finished" || data.status === "success") {
-                    document.getElementById('step-2').classList.add('hidden');
-                    document.getElementById('result-box').classList.remove('hidden');
+                if(data.status === "success") {
+                    progressBar.style.width = "100%";
+                    setTimeout(() => {
+                        loadingBox.classList.add('hidden');
+                        document.getElementById('result-box').classList.remove('hidden');
 
-                    document.getElementById('res-user').innerText = `👤 Responsable: ${data.user_name}`;
-                    document.getElementById('res-duration').innerText = `⏱️ Duración: ${data.duration_minutes} min`;
-                    document.getElementById('res-status').innerText = `✅ Completado: Sí`;
-                    document.getElementById('res-points').innerText = `⭐ Puntos obtenidos: +${data.puntos}`;
-                    document.getElementById('res-obs').innerText = `📝 Observaciones: ${data.observaciones}`;
-                    
-                    document.getElementById('link-before').href = data.before_url;
-                    document.getElementById('link-after').href = data.after_url;
+                        document.getElementById('res-user').innerText = `👤 Responsable: ${data.user_name}`;
+                        document.getElementById('res-duration').innerText = `⏱️ Duración: ${data.duration_minutes} min`;
+                        document.getElementById('res-status').innerText = `✅ Completado: Sí`;
+                        document.getElementById('res-points').innerText = `⭐ Puntos obtenidos: +${data.puntos}`;
+                        document.getElementById('res-obs').innerText = `📝 Observaciones: ${data.observaciones}`;
+                        
+                        document.getElementById('link-before').href = data.before_url;
+                        document.getElementById('link-after').href = data.after_url;
+                    }, 400);
                 } else {
+                    loadingBox.classList.add('hidden');
+                    document.getElementById('step-2').classList.remove('hidden');
                     alert("Error al finalizar: " + (data.message || "Desconocido"));
-                    btn.innerText = "Finalizar y Calificar con IA";
                     btn.disabled = false;
                 }
             } catch(e) {
+                loadingBox.classList.add('hidden');
+                document.getElementById('step-2').classList.remove('hidden');
                 alert("Error crítico: " + e);
-                btn.innerText = "Finalizar y Calificar con IA";
                 btn.disabled = false;
             }
         }
@@ -227,6 +254,7 @@
         function resetApp() {
             startTime = null;
             document.getElementById('result-box').classList.add('hidden');
+            document.getElementById('loading-box').classList.add('hidden');
             document.getElementById('step-2').classList.add('hidden');
             document.getElementById('step-1').classList.remove('hidden');
             document.getElementById('before_photo').value = "";
@@ -237,6 +265,7 @@
             const btn2 = document.querySelector('#step-2 button');
             btn2.innerText = "Finalizar y Calificar con IA";
             btn2.disabled = false;
+            document.getElementById('progress-bar').style.width = "1/3";
         }
 
         async function loadLeaderboard(periodo) {
