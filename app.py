@@ -151,11 +151,22 @@ async def evaluate_task(
         
         try:
             if client:
-                response = client.models.generate_content(
-                    model='gemini-3.6-flash', 
-                    contents=[img_before, img_after, prompt],
-                    config=types.GenerateContentConfig(response_mime_type="application/json")
-                )
+                # Reintento simple en caso de saturación temporal (503)
+                response = None
+                for intento in range(3):
+                    try:
+                        response = client.models.generate_content(
+                            model='gemini-3.6-flash', 
+                            contents=[img_before, img_after, prompt],
+                            config=types.GenerateContentConfig(response_mime_type="application/json")
+                        )
+                        break
+                    except Exception as api_err:
+                        if "503" in str(api_err) and intento < 2:
+                            time.sleep(2) # Espera 2 segundos antes de reintentar
+                            continue
+                        raise api_err
+
                 raw = response.text.strip()
                 if raw.startswith("```json"):
                     raw = raw[7:-3].strip()
@@ -171,6 +182,7 @@ async def evaluate_task(
             print(f"❌ {error_msg}")
             traceback.print_exc()
             eval_data = {"completado": True, "puntos": max_score, "observaciones": error_msg}
+
 
         now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
         guardar_en_sheet([
