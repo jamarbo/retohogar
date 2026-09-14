@@ -223,8 +223,8 @@ async def evaluate_task(
 async def get_leaderboard(periodo: str = "hoy"):
     totales = {
         "Jaiver Martínez": {"puntos": 0, "tareas": 0},
-        "Gabriela": {"puntos": 0, "tareas": 0},
-        "Valeria": {"puntos": 0, "tareas": 0},
+        "Gabriela Martínez": {"puntos": 0, "tareas": 0},
+        "Valeria Martínez": {"puntos": 0, "tareas": 0},
         "Elizabeth Parra": {"puntos": 0, "tareas": 0}
     }
     try:
@@ -272,18 +272,18 @@ async def get_leaderboard(periodo: str = "hoy"):
         except ValueError:
             pts = 0
 
-        if any(token in usuario_val for token in ["jaiv", "haib", "jabe", "martinez", "martínez"]):
-            totales["Jaiver Martínez"]["puntos"] += pts
-            totales["Jaiver Martínez"]["tareas"] += 1
-        elif "gab" in usuario_val:
-            totales["Gabriela"]["puntos"] += pts
-            totales["Gabriela"]["tareas"] += 1
+        if "gab" in usuario_val:
+            totales["Gabriela Martínez"]["puntos"] += pts
+            totales["Gabriela Martínez"]["tareas"] += 1
         elif "val" in usuario_val:
-            totales["Valeria"]["puntos"] += pts
-            totales["Valeria"]["tareas"] += 1
+            totales["Valeria Martínez"]["puntos"] += pts
+            totales["Valeria Martínez"]["tareas"] += 1
         elif "eli" in usuario_val or "parra" in usuario_val:
             totales["Elizabeth Parra"]["puntos"] += pts
             totales["Elizabeth Parra"]["tareas"] += 1
+        elif any(token in usuario_val for token in ["jaiv", "haib", "hyber", "jabe", "martinez", "martínez"]):
+            totales["Jaiver Martínez"]["puntos"] += pts
+            totales["Jaiver Martínez"]["tareas"] += 1
 
     return totales
 
@@ -370,13 +370,13 @@ async def get_user_tasks(user: str, periodo: str = "semana"):
                 user_lower = user.lower()
                 row_user_lower = usuario_val.lower()
                 matched = False
-                if "jaiv" in user_lower and any(t in row_user_lower for t in ["jaiv", "martinez"]):
-                    matched = True
-                elif "gab" in user_lower and "gab" in row_user_lower:
+                if "gab" in user_lower and "gab" in row_user_lower:
                     matched = True
                 elif "val" in user_lower and "val" in row_user_lower:
                     matched = True
-                elif "eli" in user_lower and ("eli" in row_user_lower or "parra" in row_user_lower):
+                elif ("eli" in user_lower or "parra" in user_lower) and ("eli" in row_user_lower or "parra" in row_user_lower):
+                    matched = True
+                elif ("jaiv" in user_lower or "hyber" in user_lower or "haib" in user_lower) and ("jaiv" in row_user_lower or "hyber" in row_user_lower or "haib" in row_user_lower or "jabe" in row_user_lower or (("gab" not in row_user_lower and "val" not in row_user_lower and "eli" not in row_user_lower and "parra" not in row_user_lower) and any(t in row_user_lower for t in ["jaiv", "martinez", "martínez"]))):
                     matched = True
 
                 if not matched:
