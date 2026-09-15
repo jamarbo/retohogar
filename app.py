@@ -5,7 +5,7 @@ import json
 import traceback
 from datetime import datetime, timedelta, date
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
 from fastapi.responses import FileResponse
 from PIL import Image
 
@@ -492,6 +492,20 @@ async def get_user_tasks(user: str, periodo: str = "semana"):
         return {"error": str(e)}
 
     return user_tasks
+
+# --- ENDPOINT GET PARA LA VERIFICACIÓN DE META ---
+@app.get("/api/whatsapp-webhook")
+async def verify_whatsapp_webhook(request: Request):
+    hub_mode = request.query_params.get("hub.mode")
+    hub_challenge = request.query_params.get("hub.challenge")
+    hub_verify_token = request.query_params.get("hub.verify_token")
+
+    # Token de verificación configurado (debe coincidir exactamente con el del panel de Meta)
+    VERIFY_TOKEN = "reto_hogar_token_2026"
+
+    if hub_mode == "subscribe" and hub_verify_token == VERIFY_TOKEN:
+        return int(hub_challenge)
+    raise HTTPException(status_code=403, detail="Token de verificación inválido")
 
 @app.post("/api/whatsapp-webhook")
 async def whatsapp_webhook(payload: dict):
