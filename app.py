@@ -14,8 +14,7 @@ from google.genai import types
 import gspread
 from google.auth import default
 from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
+from pydantic import BaseModel
 import base64
 import requests
 
@@ -54,7 +53,9 @@ TASK_POINTS = {
     "Tender la cama": 40
 }
 
-PENDING_GIRO = {}
+class MoneyRequest(BaseModel):
+    user_name: str
+    amount: float
 
 def get_colombia_now():
     return datetime.utcnow() - timedelta(hours=5)
@@ -71,36 +72,6 @@ def get_google_credentials():
     else:
         creds, _ = default()
         return creds
-
-def enviar_mensaje_whatsapp(telefono_destino: str, texto: str):
-    whatsapp_token = os.environ.get("WHATSAPP_TOKEN", "")
-    phone_number_id = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "1370093082847181")
-    
-    if not whatsapp_token:
-        print("⚠️ Falta configurar WHATSAPP_TOKEN en las variables de entorno de Render.")
-        return
-        
-    url = f"https://graph.facebook.com/v20.0/{phone_number_id}/messages"
-    headers = {
-        "Authorization": f"Bearer {whatsapp_token}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "messaging_product": "whatsapp",
-        "to": telefono_destino,
-        "type": "text",
-        "text": {"body": texto}
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        print(f"🔍 Respuesta de Meta API WhatsApp (Status {response.status_code}): {response.text}")
-        if response.status_code == 200:
-            print("✅ Mensaje enviado con éxito a WhatsApp.")
-        else:
-            print(f"❌ Error enviando a WhatsApp: {response.text}")
-    except Exception as e:
-        print(f"❌ Excepción enviando mensaje a WhatsApp: {e}")
 
 def subir_foto_drive_usuario(user_name, filename, photo_bytes):
     try:
@@ -176,6 +147,8 @@ def obtener_puntos_semana(usuario_keyword: str) -> int:
                 matched = True
             elif ("gab" in user_kw or "gabi" in user_kw) and "gab" in usuario_val:
                 matched = True
+            elif ("jaiv" in user_kw) and ("jaiv" in usuario_val or "martinez" in usuario_val):
+                matched = True
 
             if not matched:
                 continue
@@ -196,33 +169,61 @@ def obtener_puntos_semana(usuario_keyword: str) -> int:
         print(f"❌ Error al obtener puntos semanales: {e}")
         return 0
 
-def detectar_usuario(message_body: str, profile_name: str, sender_phone: str):
-    texto = f"{message_body} {profile_name}".lower()
-    
-    val_phone = os.environ.get("VALERIA_PHONE", "")
-    gab_phone = os.environ.get("GABRIELLA_PHONE", "")
-
-    if "gabriella" in texto or "gabriela" in texto or "gaby" in texto or "gabi" in texto or "gab" in texto or (gab_phone and gab_phone in sender_phone):
-        return "Gabriela Martínez", "gab"
-    elif "valeria" in texto or "val" in texto or (val_phone and val_phone in sender_phone):
-        return "Valeria Martínez", "val"
-    else:
-        pts_val = obtener_puntos_semana("val")
-        pts_gab = obtener_puntos_semana("gab")
-        if pts_gab >= 1000 and pts_val < 1000:
-            return "Gabriela Martínez", "gab"
-        elif pts_val >= 1000 and pts_gab < 1000:
-            return "Valeria Martínez", "val"
-        elif pts_gab > pts_val:
-            return "Gabriela Martínez", "gab"
-        return "Valeria Martínez", "val"
-
 @app.get("/saludo")
 async def saludo():
     return {
         "proyecto": "RetoHogar",
         "mensaje": "¡Bienvenido al proyecto RetoHogar! Tu plataforma para gamificar y organizar las tareas del hogar."
     }
+
+@app.post("/api/request-money")
+async def request_money(req: MoneyRequest):
+    try:
+        user_name = req.user_name
+        requested_amount = req.amount
+        
+        # Lógica de validación de puntos (ej: cada 1000 puntos habilitan monto)
+        puntos_actuales = obtener_puntos_semana(user_name)
+        
+        if puntos_actuales < 1000:
+            return {
+                "status": "error",
+                "message": f"No tienes suficientes puntos acumulados esta semana (Tienes {puntos_actuales} pts, mínimo 1000 pts requeridos)."
+            }
+            
+        monto_permitido = (puntos_actuales // 1000) * 10000
+        
+        if requested_amount > monto_permitido:
+            return {
+                "status": "error",
+                "message": f"El monto solicitado (${requestedantenna_fmt = f'{requested_amount:,.0f}' if False else f'{requested_amount:,.0f}'}) excede lo permitido por tus puntos actuales (${monto_permitido:,.0f})."
+            }
+            
+        puntos_a_descontar = int((requested_amount / 10000) * 1000)
+        
+        # Registrar el descuento o solicitud formal en Google Sheets
+        now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
+        guardar_en_sheet([
+            now_colombia,
+            user_name,
+            "Solicitud de Dinero Web",
+            0,
+            "Sí",
+            -puntos_a_descontar,
+            0,
+            f"Solicitud web de ${requested_amount:,.0f} aprobada y procesada.",
+            "#",
+            "#"
+        ])
+        
+        return {
+            "status": "success",
+            "message": f"¡Solicitud aprobada! Se han descontado {puntos_a_descontar} puntos por un valor de ${requested_amount:,.0f}."
+        }
+    except Exception as e:
+        print(f"❌ Error procesando solicitud de dinero: {e}")
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
 
 @app.post("/api/evaluate-task")
 async def evaluate_task(
@@ -522,114 +523,6 @@ async def get_user_tasks(user: str, periodo: str = "semana"):
         return {"error": str(e)}
 
     return user_tasks
-
-# --- ENDPOINT GET PARA LA VERIFICACIÓN DE META ---
-@app.get("/api/whatsapp-webhook")
-async def verify_whatsapp_webhook(request: Request):
-    hub_mode = request.query_params.get("hub.mode")
-    hub_challenge = request.query_params.get("hub.challenge")
-    hub_verify_token = request.query_params.get("hub.verify_token")
-
-    VERIFY_TOKEN = "reto_hogar_token_2026"
-
-    if hub_mode == "subscribe" and hub_verify_token == VERIFY_TOKEN:
-        return int(hub_challenge)
-    raise HTTPException(status_code=403, detail="Token de verificación inválido")
-
-@app.post("/api/whatsapp-webhook")
-async def whatsapp_webhook(payload: dict):
-    print("📥 ¡Webhook de WhatsApp recibido con éxito!")
-    try:
-        entry = payload.get("entry", [{}])[0]
-        changes = entry.get("changes", [{}])[0]
-        value = changes.get("value", {})
-        messages = value.get("messages", [])
-        
-        if not messages:
-            print("⚠️ No se encontraron mensajes en el payload.")
-            return {"status": "ignored", "reason": "No messages found"}
-            
-        msg = messages[0]
-        sender_phone = msg.get("from", "")
-        
-        # Extracción segura y robusta del mensaje (Texto plano o Interactivo)
-        message_body = ""
-        msg_type = msg.get("type")
-        if msg_type == "text":
-            message_body = msg.get("text", {}).get("body", "").lower()
-        elif msg_type == "interactive":
-            interactive_data = msg.get("interactive", {})
-            if "button_reply" in interactive_data:
-                message_body = interactive_data.get("button_reply", {}).get("title", "").lower()
-            elif "list_reply" in interactive_data:
-                message_body = interactive_data.get("list_reply", {}).get("title", "").lower()
-        else:
-            message_body = msg.get("text", {}).get("body", "").lower()
-
-        print(f"💬 Mensaje recibido de {sender_phone} (Tipo: {msg_type}): '{message_body}'")
-        
-        contacts = value.get("contacts", [])
-        profile_name = contacts[0].get("profile", {}).get("name", "") if contacts else ""
-        
-        # Confirmación del papá ("ya giré", "girado", "enviado")
-        if any(phrase in message_body for phrase in ["ya giré", "ya gire", "girado", "enviado"]):
-            if PENDING_GIRO:
-                user_name = PENDING_GIRO.get("user_name", "Valeria Martínez")
-                puntos_a_descontar = PENDING_GIRO.get("puntos_a_descontar", 1000)
-                monto_fmt = PENDING_GIRO.get("monto_fmt", "10,000")
-                
-                now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
-                guardar_en_sheet([
-                    now_colombia,
-                    user_name,
-                    "Giro de dinero - Descuento",
-                    0,
-                    "Sí",
-                    -puntos_a_descontar,
-                    0,
-                    f"Giro de ${monto_fmt} confirmado por Papá",
-                    "#",
-                    "#"
-                ])
-                
-                PENDING_GIRO.clear()
-                
-                reply_text = f"✅ Giro de ${monto_fmt} confirmado exitosamente para {user_name}. Se han descontado {puntos_a_descontar:,} puntos de su total semanal."
-                enviar_mensaje_whatsapp(sender_phone, reply_text)
-                return {"status": "success", "reply": reply_text, "action": "giro_completado"}
-            else:
-                reply_text = "No hay ningún giro de dinero pendiente por confirmar."
-                enviar_mensaje_whatsapp(sender_phone, reply_text)
-                return {"status": "success", "reply": reply_text}
-
-        # Petición de dinero por parte de una hija ("plata", "dinero", "préstame", "prestame", "necesito")
-        if any(word in message_body for word in ["plata", "dinero", "préstame", "prestame", "necesito"]):
-            user_name, user_kw = detectar_usuario(message_body, profile_name, sender_phone)
-            puntos_semana = obtener_puntos_semana(user_kw)
-            
-            if puntos_semana < 1000:
-                reply_text = "No se puede hacer el giro, saldo de puntos insuficiente."
-                enviar_mensaje_whatsapp(sender_phone, reply_text)
-                return {"status": "success", "reply": reply_text}
-            else:
-                puntos_a_descontar = (puntos_semana // 1000) * 1000
-                monto = (puntos_semana // 1000) * 10000
-                monto_fmt = f"{monto:,}"
-                
-                PENDING_GIRO["user_name"] = user_name
-                PENDING_GIRO["puntos_a_descontar"] = puntos_a_descontar
-                PENDING_GIRO["monto"] = monto
-                PENDING_GIRO["monto_fmt"] = monto_fmt
-                
-                reply_text = f"🤖 Evaluando tus puntos en el Reto del Hogar... Tienes suficientes puntos para recibir ${monto_fmt}. Esperando aprobación de Papá en el grupo (confirma con 'ya giré')."
-                enviar_mensaje_whatsapp(sender_phone, reply_text)
-                return {"status": "success", "reply": reply_text}
-            
-        return {"status": "received"}
-    except Exception as e:
-        print(f"❌ Error en webhook de WhatsApp: {e}")
-        traceback.print_exc()
-        return {"status": "error", "message": str(e)}
 
 @app.get("/")
 async def home():

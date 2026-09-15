@@ -60,6 +60,13 @@
                 </select>
             </div>
 
+            <!-- Botón de Solicitud de Plata Directa -->
+            <div class="pt-2">
+                <button onclick="openMoneyModal()" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 rounded-lg transition shadow-lg text-sm flex items-center justify-center gap-2">
+                    💰 Solicitar Plata
+                </button>
+            </div>
+
             <!-- Paso 1: Foto Inicial -->
             <div id="step-1" class="space-y-3 pt-2">
                 <label class="block text-sm font-medium text-amber-300">📸 Paso 1: Foto ANTES de empezar</label>
@@ -153,6 +160,25 @@
         </div>
     </div>
 
+    <!-- Modal de Solicitar Plata -->
+    <div id="modal-money" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+                <h2 class="text-lg font-bold text-cyan-400">💰 Solicitar Plata</h2>
+                <button onclick="closeMoneyModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+            </div>
+            <div>
+                <label class="block text-xs text-slate-300 mb-1">¿Cuánto deseas solicitar?</label>
+                <input type="number" id="money-amount" placeholder="Ej: 10000" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 text-sm focus:outline-none focus:border-cyan-500">
+            </div>
+            <div id="money-response" class="hidden p-3 bg-slate-900 rounded-lg text-xs text-slate-200 border border-slate-700"></div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="closeMoneyModal()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2.5 rounded-xl font-medium transition">Cancelar</button>
+                <button onclick="submitMoneyRequest()" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white text-xs py-2.5 rounded-xl font-bold transition shadow">Enviar Solicitud</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let startTime = null;
         let globalPeriodo = 'semana';
@@ -171,6 +197,47 @@
                 document.getElementById('btn-task').className = "flex-1 py-2 rounded-md font-medium text-sm transition text-slate-300";
                 globalPeriodo = periodo;
                 loadLeaderboard(periodo);
+            }
+        }
+
+        function openMoneyModal() {
+            document.getElementById('money-amount').value = "";
+            document.getElementById('money-response').classList.add('hidden');
+            document.getElementById('modal-money').classList.remove('hidden');
+        }
+
+        function closeMoneyModal() {
+            document.getElementById('modal-money').classList.add('hidden');
+        }
+
+        async function submitMoneyRequest() {
+            const userName = document.getElementById('user_name').value;
+            const amount = document.getElementById('money-amount').value;
+            const responseBox = document.getElementById('money-response');
+
+            if(!amount || amount <= 0) {
+                alert("Por favor ingresa un monto válido.");
+                return;
+            }
+
+            responseBox.classList.remove('hidden');
+            responseBox.innerText = "⏳ Verificando puntos y procesando solicitud...";
+
+            try {
+                const res = await fetch('/api/request-money', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_name: userName, amount: parseFloat(amount) })
+                });
+                const data = await res.json();
+
+                if(data.status === "success") {
+                    responseBox.innerHTML = `<span class="text-emerald-400 font-bold">✅ Solicitud Exitosa:</span> ${data.message}`;
+                } else {
+                    responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Rechazado:</span> ${data.message}`;
+                }
+            } catch(e) {
+                responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Error:</span> No se pudo procesar la solicitud.`;
             }
         }
 
@@ -298,7 +365,6 @@
                 }
             });
 
-            // Mostrar u ocultar la tarjeta de reto grupal según el período (idealmente aplica para la semana o mes)
             const groupCard = document.getElementById('group-challenge-card');
             if(periodo === 'hoy') {
                 groupCard.style.display = 'none';
@@ -312,7 +378,6 @@
                 
                 const sorted = Object.entries(data).sort((a,b) => b[1].puntos - a[1].puntos);
                 
-                // Calcular puntos totales de la familia para el reto grupal
                 let totalGroupPoints = 0;
                 Object.values(data).forEach(info => {
                     totalGroupPoints += info.puntos;
