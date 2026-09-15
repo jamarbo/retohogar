@@ -94,6 +94,7 @@ def enviar_mensaje_whatsapp(telefono_destino: str, texto: str):
     
     try:
         response = requests.post(url, headers=headers, json=payload)
+        print(f"🔍 Respuesta de Meta API WhatsApp (Status {response.status_code}): {response.text}")
         if response.status_code == 200:
             print("✅ Mensaje enviado con éxito a WhatsApp.")
         else:
