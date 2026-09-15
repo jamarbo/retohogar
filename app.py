@@ -72,6 +72,35 @@ def get_google_credentials():
         creds, _ = default()
         return creds
 
+def enviar_mensaje_whatsapp(telefono_destino: str, texto: str):
+    whatsapp_token = os.environ.get("WHATSAPP_TOKEN", "")
+    phone_number_id = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "1370093082847181")
+    
+    if not whatsapp_token:
+        print("⚠️ Falta configurar WHATSAPP_TOKEN en las variables de entorno de Render.")
+        return
+        
+    url = f"https://graph.facebook.com/v20.0/{phone_number_id}/messages"
+    headers = {
+        "Authorization": f"Bearer {whatsapp_token}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": telefono_destino,
+        "type": "text",
+        "text": {"body": texto}
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        if response.status_code == 200:
+            print("✅ Mensaje enviado con éxito a WhatsApp.")
+        else:
+            print(f"❌ Error enviando a WhatsApp: {response.text}")
+    except Exception as e:
+        print(f"❌ Excepción enviando mensaje a WhatsApp: {e}")
+
 def subir_foto_drive_usuario(user_name, filename, photo_bytes):
     try:
         github_token = os.environ.get("GITHUB_TOKEN")
@@ -500,7 +529,6 @@ async def verify_whatsapp_webhook(request: Request):
     hub_challenge = request.query_params.get("hub.challenge")
     hub_verify_token = request.query_params.get("hub.verify_token")
 
-    # Token de verificación configurado (debe coincidir exactamente con el del panel de Meta)
     VERIFY_TOKEN = "reto_hogar_token_2026"
 
     if hub_mode == "subscribe" and hub_verify_token == VERIFY_TOKEN:
@@ -549,9 +577,12 @@ async def whatsapp_webhook(payload: dict):
                 PENDING_GIRO.clear()
                 
                 reply_text = f"✅ Giro de ${monto_fmt} confirmado exitosamente para {user_name}. Se han descontado {puntos_a_descontar:,} puntos de su total semanal."
+                enviar_mensaje_whatsapp(sender_phone, reply_text)
                 return {"status": "success", "reply": reply_text, "action": "giro_completado"}
             else:
-                return {"status": "success", "reply": "No hay ningún giro de dinero pendiente por confirmar."}
+                reply_text = "No hay ningún giro de dinero pendiente por confirmar."
+                enviar_mensaje_whatsapp(sender_phone, reply_text)
+                return {"status": "success", "reply": reply_text}
 
         # Petición de dinero por parte de una hija ("plata", "dinero", "préstame", "prestame", "necesito")
         if any(word in message_body for word in ["plata", "dinero", "préstame", "prestame", "necesito"]):
@@ -560,6 +591,7 @@ async def whatsapp_webhook(payload: dict):
             
             if puntos_semana < 1000:
                 reply_text = "No se puede hacer el giro, saldo de puntos insuficiente."
+                enviar_mensaje_whatsapp(sender_phone, reply_text)
                 return {"status": "success", "reply": reply_text}
             else:
                 puntos_a_descontar = (puntos_semana // 1000) * 1000
@@ -572,6 +604,7 @@ async def whatsapp_webhook(payload: dict):
                 PENDING_GIRO["monto_fmt"] = monto_fmt
                 
                 reply_text = f"🤖 Evaluando tus puntos en el Reto del Hogar... Tienes suficientes puntos para recibir ${monto_fmt}. Esperando aprobación de Papá en el grupo (confirma con 'ya giré')."
+                enviar_mensaje_whatsapp(sender_phone, reply_text)
                 return {"status": "success", "reply": reply_text}
             
         return {"status": "received"}
