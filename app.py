@@ -54,6 +54,8 @@ TASK_POINTS = {
     "Tender la cama": 40
 }
 
+PENDING_GIRO = {}
+
 def get_colombia_now():
     return datetime.utcnow() - timedelta(hours=5)
 
@@ -111,6 +113,79 @@ def guardar_en_sheet(fila):
         print("✅ Registro guardado en Sheets con éxito.")
     except Exception as e:
         print(f"❌ Error al guardar en Sheets: {e}")
+
+def obtener_puntos_semana(usuario_keyword: str) -> int:
+    try:
+        creds = get_google_credentials()
+        gc = gspread.authorize(creds)
+        sheet = gc.open(SHEET_NAME).sheet1
+        filas = sheet.get_all_values()
+        if len(filas) <= 1:
+            return 0
+
+        now = get_colombia_now()
+        hoy_date = now.date()
+        inicio_semana_date = hoy_date - timedelta(days=hoy_date.weekday())
+        
+        total_puntos = 0
+        user_kw = usuario_keyword.lower()
+
+        for fila in filas[1:]:
+            if len(fila) < 6:
+                continue
+            fecha_str = str(fila[0]).strip()
+            usuario_val = str(fila[1]).strip().lower()
+            completado_val = str(fila[4]).strip().lower()
+            puntos_str = str(fila[5]).strip()
+
+            if completado_val not in ["sí", "si", "true", "1", "yes"]:
+                continue
+
+            matched = False
+            if "val" in user_kw and "val" in usuario_val:
+                matched = True
+            elif ("gab" in user_kw or "gabi" in user_kw) and "gab" in usuario_val:
+                matched = True
+
+            if not matched:
+                continue
+
+            try:
+                fila_date = datetime.strptime(fecha_str[:10], "%Y-%m-%d").date()
+            except ValueError:
+                continue
+
+            if fila_date >= inicio_semana_date:
+                try:
+                    total_puntos += int(float(puntos_str))
+                except ValueError:
+                    pass
+
+        return total_puntos
+    except Exception as e:
+        print(f"❌ Error al obtener puntos semanales: {e}")
+        return 0
+
+def detectar_usuario(message_body: str, profile_name: str, sender_phone: str):
+    texto = f"{message_body} {profile_name}".lower()
+    
+    val_phone = os.environ.get("VALERIA_PHONE", "")
+    gab_phone = os.environ.get("GABRIELLA_PHONE", "")
+
+    if "gabriella" in texto or "gabriela" in texto or "gaby" in texto or "gabi" in texto or "gab" in texto or (gab_phone and gab_phone in sender_phone):
+        return "Gabriela Martínez", "gab"
+    elif "valeria" in texto or "val" in texto or (val_phone and val_phone in sender_phone):
+        return "Valeria Martínez", "val"
+    else:
+        pts_val = obtener_puntos_semana("val")
+        pts_gab = obtener_puntos_semana("gab")
+        if pts_gab >= 1000 and pts_val < 1000:
+            return "Gabriela Martínez", "gab"
+        elif pts_val >= 1000 and pts_gab < 1000:
+            return "Valeria Martínez", "val"
+        elif pts_gab > pts_val:
+            return "Gabriela Martínez", "gab"
+        return "Valeria Martínez", "val"
 
 @app.get("/saludo")
 async def saludo():
@@ -268,7 +343,7 @@ async def get_leaderboard(periodo: str = "hoy"):
             continue
 
         try:
-            pts = int(puntos_str)
+            pts = int(float(puntos_str))
         except ValueError:
             pts = 0
 
@@ -317,7 +392,7 @@ async def get_cooperative_goal(meta_semanal: int = 14000):
                 
                 if fila_date >= inicio_semana_date:
                     try:
-                        total_puntos_semana += int(puntos_str)
+                        total_puntos_semana += int(float(puntos_str))
                     except ValueError:
                         pass
     except Exception as e:
@@ -421,8 +496,10 @@ async def get_user_tasks(user: str, periodo: str = "semana"):
 @app.post("/api/whatsapp-webhook")
 async def whatsapp_webhook(payload: dict):
     try:
-        message_data = payload.get("entry", [{}])[0].get("changes", [{}])[0].get("value", {})
-        messages = message_data.get("messages", [])
+        entry = payload.get("entry", [{}])[0]
+        changes = entry.get("changes", [{}])[0]
+        value = changes.get("value", {})
+        messages = value.get("messages", [])
         
         if not messages:
             return {"status": "ignored", "reason": "No messages found"}
@@ -431,18 +508,62 @@ async def whatsapp_webhook(payload: dict):
         sender_phone = msg.get("from", "")
         message_body = msg.get("text", {}).get("body", "").lower()
         
-        admin_phone = os.environ.get("ADMIN_WHATSAPP_PHONE", "573000000000") 
+        contacts = value.get("contacts", [])
+        profile_name = contacts[0].get("profile", {}).get("name", "") if contacts else ""
         
-        if sender_phone == admin_phone and ("ya giré" in message_body or "girado" in message_body or "enviado" in message_body):
-            return {"status": "success", "action": "admin_reset_processed"}
+        # Confirmación del papá ("ya giré", "girado", "enviado")
+        if any(phrase in message_body for phrase in ["ya giré", "ya gire", "girado", "enviado"]):
+            if PENDING_GIRO:
+                user_name = PENDING_GIRO.get("user_name", "Valeria Martínez")
+                puntos_a_descontar = PENDING_GIRO.get("puntos_a_descontar", 1000)
+                monto_fmt = PENDING_GIRO.get("monto_fmt", "10,000")
+                
+                now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
+                guardar_en_sheet([
+                    now_colombia,
+                    user_name,
+                    "Giro de dinero - Descuento",
+                    0,
+                    "Sí",
+                    -puntos_a_descontar,
+                    0,
+                    f"Giro de ${monto_fmt} confirmado por Papá",
+                    "#",
+                    "#"
+                ])
+                
+                PENDING_GIRO.clear()
+                
+                reply_text = f"✅ Giro de ${monto_fmt} confirmado exitosamente para {user_name}. Se han descontado {puntos_a_descontar:,} puntos de su total semanal."
+                return {"status": "success", "reply": reply_text, "action": "giro_completado"}
+            else:
+                return {"status": "success", "reply": "No hay ningún giro de dinero pendiente por confirmar."}
 
-        if "plata" in message_body or "dinero" in message_body or "prestame" in message_body or "necesito" in message_body:
-            response_text = "🤖 Evaluando tus puntos en el Reto del Hogar... Si superas los 1,000 puntos nuevos desde tu último giro, puedes recibir hasta $20,000. Esperando aprobación de Papá en el grupo."
-            return {"status": "success", "reply": response_text}
+        # Petición de dinero por parte de una hija ("plata", "dinero", "préstame", "prestame", "necesito")
+        if any(word in message_body for word in ["plata", "dinero", "préstame", "prestame", "necesito"]):
+            user_name, user_kw = detectar_usuario(message_body, profile_name, sender_phone)
+            puntos_semana = obtener_puntos_semana(user_kw)
+            
+            if puntos_semana < 1000:
+                reply_text = "No se puede hacer el giro, saldo de puntos insuficiente."
+                return {"status": "success", "reply": reply_text}
+            else:
+                puntos_a_descontar = (puntos_semana // 1000) * 1000
+                monto = (puntos_semana // 1000) * 10000
+                monto_fmt = f"{monto:,}"
+                
+                PENDING_GIRO["user_name"] = user_name
+                PENDING_GIRO["puntos_a_descontar"] = puntos_a_descontar
+                PENDING_GIRO["monto"] = monto
+                PENDING_GIRO["monto_fmt"] = monto_fmt
+                
+                reply_text = f"🤖 Evaluando tus puntos en el Reto del Hogar... Tienes suficientes puntos para recibir ${monto_fmt}. Esperando aprobación de Papá en el grupo (confirma con 'ya giré')."
+                return {"status": "success", "reply": reply_text}
             
         return {"status": "received"}
     except Exception as e:
         print(f"❌ Error en webhook de WhatsApp: {e}")
+        traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
 @app.get("/")
