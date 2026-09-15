@@ -31,7 +31,9 @@ jobs:
         run: |
           python - <<'EOF'
           import os
+          import json
           from google import genai
+          from google.genai import types
 
           client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
@@ -46,8 +48,14 @@ jobs:
               with open("app.py", "r", encoding="utf-8") as f:
                   app_code = f.read()
 
+          # Leemos index.html
+          html_code = ""
+          if os.path.exists("index.html"):
+              with open("index.html", "r", encoding="utf-8") as f:
+                  html_code = f.read()
+
           prompt = f"""
-          Eres un desarrollador backend experto en FastAPI. 
+          Eres un desarrollador full-stack experto en FastAPI y Tailwind CSS. 
           Basado en la siguiente solicitud del usuario:
           Título: {issue_title}
           Descripción: {issue_body}
@@ -55,30 +63,42 @@ jobs:
           Este es el contenido actual de app.py:
           {app_code}
 
-          Modifica el código de app.py para cumplir por completo con lo que pide el usuario. 
-          Devuelve ÚNICAMENTE el código Python completo y actualizado para app.py, sin bloques de texto markdown adicionales ni explicaciones, solo el código puro listo para guardarse.
+          Este es el contenido actual de index.html:
+          {html_code}
+
+          Modifica ambos archivos para cumplir por completo con lo que pide el usuario.
+          Devuelve estrictamente un JSON válido con estas dos llaves exactas y sin texto adicional fuera del JSON:
+          {{
+            "app_py": "código completo actualizado de app.py",
+            "index_html": "código completo actualizado de index.html"
+          }}
           """
 
           response = client.models.generate_content(
               model='gemini-3.6-flash',
               contents=prompt,
+              config=types.GenerateContentConfig(response_mime_type="application/json")
           )
 
-          new_code = response.text.strip()
+          raw_text = response.text.strip()
+          
+          # Limpiamos bloques markdown por si acaso
+          if raw_text.startswith("```json"):
+              raw_text = raw_text[7:-3].strip()
+          elif raw_text.startswith("```"):
+              raw_text = raw_text[3:-3].strip()
 
-          # Limpiamos bloques markdown si los trae
-          if new_code.startswith("```python"):
-              new_code = new_code[9:]
-          if new_code.startswith("```"):
-              new_code = new_code[3:]
-          if new_code.endswith("```"):
-              new_code = new_code[:-3]
-          new_code = new_code.strip()
+          data = json.loads(raw_text)
 
-          if new_code:
+          if "app_py" in data and data["app_py"]:
               with open("app.py", "w", encoding="utf-8") as f:
-                  f.write(new_code)
+                  f.write(data["app_py"])
               print("¡app.py actualizado exitosamente por Gemini!")
+
+          if "index_html" in data and data["index_html"]:
+              with open("index.html", "w", encoding="utf-8") as f:
+                  f.write(data["index_html"])
+              print("¡index.html actualizado exitosamente por Gemini!")
 
           EOF
 
@@ -90,11 +110,11 @@ jobs:
           base: "main"
           title: "Gemini AI PR: ${{ github.event.issue.title }}"
           body: |
-            🤖 Este Pull Request fue implementado automáticamente por **Gemini AI** actualizando el backend según tu Issue.
+            🤖 Este Pull Request fue implementado automáticamente por **Gemini AI** actualizando el backend y frontend según tu Issue.
             
             **Requerimiento del usuario:**
             ${{ github.event.issue.body }}
-          commit-message: "feat(ai): actualización de app.py para issue #${{ github.event.issue.number }}"
+          commit-message: "feat(ai): actualización multi-archivo para issue #${{ github.event.issue.number }}"
           author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           signoff: false
           delete-branch: true
