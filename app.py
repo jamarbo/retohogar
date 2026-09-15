@@ -538,6 +538,7 @@ async def verify_whatsapp_webhook(request: Request):
 
 @app.post("/api/whatsapp-webhook")
 async def whatsapp_webhook(payload: dict):
+    print("📥 ¡Webhook de WhatsApp recibido con éxito!")
     try:
         entry = payload.get("entry", [{}])[0]
         changes = entry.get("changes", [{}])[0]
@@ -545,11 +546,13 @@ async def whatsapp_webhook(payload: dict):
         messages = value.get("messages", [])
         
         if not messages:
+            print("⚠️ No se encontraron mensajes en el payload.")
             return {"status": "ignored", "reason": "No messages found"}
             
         msg = messages[0]
         sender_phone = msg.get("from", "")
         message_body = msg.get("text", {}).get("body", "").lower()
+        print(f"💬 Mensaje recibido de {sender_phone}: '{message_body}'")
         
         contacts = value.get("contacts", [])
         profile_name = contacts[0].get("profile", {}).get("name", "") if contacts else ""
