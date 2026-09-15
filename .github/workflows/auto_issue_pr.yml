@@ -46,14 +46,8 @@ jobs:
               with open("app.py", "r", encoding="utf-8") as f:
                   app_code = f.read()
 
-          # Leemos index.html si existe
-          index_html = ""
-          if os.path.exists("index.html"):
-              with open("index.html", "r", encoding="utf-8") as f:
-                  index_html = f.read()
-
           prompt = f"""
-          Eres un desarrollador full-stack experto en FastAPI y frontend. 
+          Eres un desarrollador backend experto en FastAPI. 
           Basado en la siguiente solicitud del usuario:
           Título: {issue_title}
           Descripción: {issue_body}
@@ -61,17 +55,8 @@ jobs:
           Este es el contenido actual de app.py:
           {app_code}
 
-          Este es el contenido actual de index.html:
-          {index_html}
-
-          Modifica los archivos que sean necesarios (app.py y/o index.html) para cumplir por completo con lo que pide el usuario.
-          
-          Devuelve tu respuesta EXACTAMENTE en el siguiente formato, usando etiquetas delimitadoras para separar cada archivo, sin explicaciones adicionales:
-
-          ---APP_PY---
-          [código completo y actualizado de app.py aquí]
-          ---INDEX_HTML---
-          [código completo y actualizado de index.html aquí]
+          Modifica el código de app.py para cumplir por completo con lo que pide el usuario. 
+          Devuelve ÚNICAMENTE el código Python completo y actualizado para app.py, sin bloques de texto markdown adicionales ni explicaciones, solo el código puro listo para guardarse.
           """
 
           response = client.models.generate_content(
@@ -79,30 +64,21 @@ jobs:
               contents=prompt,
           )
 
-          output_text = response.text
+          new_code = response.text.strip()
 
-          # Separamos los archivos usando las etiquetas
-          if "---APP_PY---" in output_text and "---INDEX_HTML---" in output_text:
-              parts = output_text.split("---INDEX_HTML---")
-              app_part = parts[0].replace("---APP_PY---", "").strip()
-              index_part = parts[1].strip()
+          # Limpiamos bloques markdown si los trae
+          if new_code.startswith("```python"):
+              new_code = new_code[9:]
+          if new_code.startswith("```"):
+              new_code = new_code[3:]
+          if new_code.endswith("```"):
+              new_code = new_code[:-3]
+          new_code = new_code.strip()
 
-              # Limpiamos bloques markdown si los trae
-              for code_str, filename in [(app_part, "app.py"), (index_part, "index.html")]:
-                  if code_str.startswith("```python"):
-                      code_str = code_str[9:]
-                  elif code_str.startswith("```html"):
-                      code_str = code_str[7:]
-                  elif code_str.startswith("```"):
-                      code_str = code_str[3:]
-                  if code_str.endswith("```"):
-                      code_str = code_str[:-3]
-                  code_str = code_str.strip()
-
-                  if code_str:
-                      with open(filename, "w", encoding="utf-8") as f:
-                          f.write(code_str)
-                      print(f"¡{filename} actualizado exitosamente por Gemini!")
+          if new_code:
+              with open("app.py", "w", encoding="utf-8") as f:
+                  f.write(new_code)
+              print("¡app.py actualizado exitosamente por Gemini!")
 
           EOF
 
@@ -114,11 +90,11 @@ jobs:
           base: "main"
           title: "Gemini AI PR: ${{ github.event.issue.title }}"
           body: |
-            🤖 Este Pull Request fue implementado automáticamente por **Gemini AI** actualizando backend y/o frontend según tu Issue.
+            🤖 Este Pull Request fue implementado automáticamente por **Gemini AI** actualizando el backend según tu Issue.
             
             **Requerimiento del usuario:**
             ${{ github.event.issue.body }}
-          commit-message: "feat(ai): actualización completa de app e interfaz para issue #${{ github.event.issue.number }}"
+          commit-message: "feat(ai): actualización de app.py para issue #${{ github.event.issue.number }}"
           author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           signoff: false
           delete-branch: true
