@@ -182,7 +182,6 @@ async def request_money(req: MoneyRequest):
         user_name = req.user_name
         requested_amount = req.amount
         
-        # Lógica de validación de puntos (ej: cada 1000 puntos habilitan monto)
         puntos_actuales = obtener_puntos_semana(user_name)
         
         if puntos_actuales < 1000:
@@ -194,14 +193,15 @@ async def request_money(req: MoneyRequest):
         monto_permitido = (puntos_actuales // 1000) * 10000
         
         if requested_amount > monto_permitido:
+            requested_fmt = f"{requested_amount:,.0f}"
+            monto_permitido_fmt = f"{monto_permitido:,.0f}"
             return {
                 "status": "error",
-                "message": f"El monto solicitado (${requestedantenna_fmt = f'{requested_amount:,.0f}' if False else f'{requested_amount:,.0f}'}) excede lo permitido por tus puntos actuales (${monto_permitido:,.0f})."
+                "message": f"El monto solicitado (${requested_fmt}) excede lo permitido por tus puntos actuales (${monto_permitido_fmt})."
             }
             
         puntos_a_descontar = int((requested_amount / 10000) * 1000)
         
-        # Registrar el descuento o solicitud formal en Google Sheets
         now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
         guardar_en_sheet([
             now_colombia,
