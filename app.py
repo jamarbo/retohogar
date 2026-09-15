@@ -551,8 +551,22 @@ async def whatsapp_webhook(payload: dict):
             
         msg = messages[0]
         sender_phone = msg.get("from", "")
-        message_body = msg.get("text", {}).get("body", "").lower()
-        print(f"💬 Mensaje recibido de {sender_phone}: '{message_body}'")
+        
+        # Extracción segura y robusta del mensaje (Texto plano o Interactivo)
+        message_body = ""
+        msg_type = msg.get("type")
+        if msg_type == "text":
+            message_body = msg.get("text", {}).get("body", "").lower()
+        elif msg_type == "interactive":
+            interactive_data = msg.get("interactive", {})
+            if "button_reply" in interactive_data:
+                message_body = interactive_data.get("button_reply", {}).get("title", "").lower()
+            elif "list_reply" in interactive_data:
+                message_body = interactive_data.get("list_reply", {}).get("title", "").lower()
+        else:
+            message_body = msg.get("text", {}).get("body", "").lower()
+
+        print(f"💬 Mensaje recibido de {sender_phone} (Tipo: {msg_type}): '{message_body}'")
         
         contacts = value.get("contacts", [])
         profile_name = contacts[0].get("profile", {}).get("name", "") if contacts else ""
