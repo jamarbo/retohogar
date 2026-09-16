@@ -84,7 +84,7 @@ def enviar_correo_smtp(asunto: str, contenido_html: str):
     try:
         smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
         smtp_port = int(os.environ.get("SMTP_PORT", "587"))
-        smtp_user = os.environ.get("SMTP_USER", "javier.martinez@gmail.com")
+        smtp_user = os.environ.get("SMTP_USER", "jaiver.martinez@gmail.com")
         smtp_password = os.environ.get("SMTP_PASSWORD", "")
 
         if not smtp_password:
