@@ -21,7 +21,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install google-genai requests
+          pip install google-genai requests pydantic
 
       - name: Run Gemini AI Developer Agent
         env:
@@ -31,7 +31,7 @@ jobs:
         run: |
           python - <<'EOF'
           import os
-          import json
+          from pydantic import BaseModel, Field
           from google import genai
           from google.genai import types
 
@@ -54,8 +54,13 @@ jobs:
               with open("index.html", "r", encoding="utf-8") as f:
                   html_code = f.read()
 
+          # Definimos el esquema estricto con Pydantic para evitar errores de parseo
+          class ProjectFiles(BaseModel):
+              app_py: str = Field(description="Código completo y actualizado de app.py")
+              index_html: str = Field(description="Código completo y actualizado de index.html")
+
           prompt = f"""
-          Eres un desarrollador full-stack experto en FastAPI y Tailwind CSS. 
+          Eres un desarrollador full-stack experto en FastAPI, Python y Tailwind CSS. 
           Basado en la siguiente solicitud del usuario:
           Título: {issue_title}
           Descripción: {issue_body}
@@ -66,38 +71,30 @@ jobs:
           Este es el contenido actual de index.html:
           {html_code}
 
-          Modifica ambos archivos para cumplir por completo con lo que pide el usuario.
-          Devuelve estrictamente un JSON válido con estas dos llaves exactas y sin texto adicional fuera del JSON:
-          {{
-            "app_py": "código completo actualizado de app.py",
-            "index_html": "código completo actualizado de index.html"
-          }}
+          Modifica ambos archivos para cumplir por completo con lo que pide el usuario (por ejemplo, manejando reintentos de modelos de IA si aplica en el backend).
+          Devuelve el código resultante de ambos archivos cumpliendo con el esquema solicitado.
           """
 
           response = client.models.generate_content(
               model='gemini-3.6-flash',
               contents=prompt,
-              config=types.GenerateContentConfig(response_mime_type="application/json")
+              config=types.GenerateContentConfig(
+                  response_mime_type="application/json",
+                  response_schema=ProjectFiles,
+              ),
           )
 
-          raw_text = response.text.strip()
-          
-          # Limpiamos bloques markdown por si acaso
-          if raw_text.startswith("```json"):
-              raw_text = raw_text[7:-3].strip()
-          elif raw_text.startswith("```"):
-              raw_text = raw_text[3:-3].strip()
+          # Parseamos la respuesta usando el modelo validado de Pydantic
+          result = ProjectFiles.model_validate_json(response.text)
 
-          data = json.loads(raw_text)
-
-          if "app_py" in data and data["app_py"]:
+          if result.app_py:
               with open("app.py", "w", encoding="utf-8") as f:
-                  f.write(data["app_py"])
+                  f.write(result.app_py)
               print("¡app.py actualizado exitosamente por Gemini!")
 
-          if "index_html" in data and data["index_html"]:
+          if result.index_html:
               with open("index.html", "w", encoding="utf-8") as f:
-                  f.write(data["index_html"])
+                  f.write(result.index_html)
               print("¡index.html actualizado exitosamente por Gemini!")
 
           EOF
@@ -114,7 +111,7 @@ jobs:
             
             **Requerimiento del usuario:**
             ${{ github.event.issue.body }}
-          commit-message: "feat(ai): actualización multi-archivo para issue #${{ github.event.issue.number }}"
+          commit-message: "feat(ai): actualización multi-archivo con Pydantic para issue #${{ github.event.issue.number }}"
           author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           signoff: false
           delete-branch: true
