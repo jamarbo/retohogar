@@ -75,32 +75,29 @@ jobs:
           Devuelve el código resultante de ambos archivos cumpliendo con el esquema solicitado.
           """
 
+          models_to_try = ['gemini-3.6-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
           response = None
-          try:
-              print("Intentando generar contenido con el modelo principal: gemini-3.6-flash...")
-              response = client.models.generate_content(
-                  model='gemini-3.6-flash',
-                  contents=prompt,
-                  config=types.GenerateContentConfig(
-                      response_mime_type="application/json",
-                      response_schema=ProjectFiles,
-                  ),
-              )
-          except Exception as e:
-              print(f"Advertencia: Falló el modelo principal gemini-3.6-flash ({e}). Aplicando fallback a gemini-2.5-flash...")
+          success = False
+
+          for model_name in models_to_try:
               try:
+                  print(f"Intentando generar contenido con el modelo: {model_name}...")
                   response = client.models.generate_content(
-                      model='gemini-2.5-flash',
+                      model=model_name,
                       contents=prompt,
                       config=types.GenerateContentConfig(
                           response_mime_type="application/json",
                           response_schema=ProjectFiles,
                       ),
                   )
-                  print("¡Éxito utilizando el modelo de respaldo gemini-2.5-flash!")
-              except Exception as fallback_error:
-                  print(f"Error crítico: Ambos modelos fallaron. Fallback error: {fallback_error}")
-                  raise fallback_error
+                  print(f"¡Éxito utilizando el modelo {model_name}!")
+                  success = True
+                  break
+              except Exception as e:
+                  print(f"Advertencia: El modelo {model_name} falló con el error: {e}")
+
+          if not success or not response:
+              raise Exception("Error crítico: Todos los modelos configurados fallaron o no están disponibles.")
 
           # Parseamos la respuesta usando el modelo validado de Pydantic
           result = ProjectFiles.model_validate_json(response.text)
@@ -129,7 +126,7 @@ jobs:
             
             **Requerimiento del usuario:**
             ${{ github.event.issue.body }}
-          commit-message: "feat(ai): actualización multi-archivo con Pydantic y fallback para issue #${{ github.event.issue.number }}"
+          commit-message: "feat(ai): actualización multi-archivo con Pydantic y fallback en cascada para issue #${{ github.event.issue.number }}"
           author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           signoff: false
           delete-branch: true
