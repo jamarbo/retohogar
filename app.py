@@ -93,7 +93,7 @@ def enviar_correo_smtp(asunto: str, contenido_html: str):
 
         msg = MIMEMultipart()
         msg['From'] = smtp_user
-        msg['To'] = "javier.martinez@gmail.com"
+        msg['To'] = "jaiver.martinez@gmail.com"
         msg['Subject'] = asunto
 
         msg.attach(MIMEText(contenido_html, 'html'))
@@ -101,7 +101,7 @@ def enviar_correo_smtp(asunto: str, contenido_html: str):
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
             server.login(smtp_user, smtp_password)
-            server.sendmail(smtp_user, "javier.martinez@gmail.com", msg.as_string())
+            server.sendmail(smtp_user, "jaiver.martinez@gmail.com", msg.as_string())
         print("✅ Correo de notificación SMTP enviado exitosamente.")
     except Exception as e:
         print(f"❌ Error enviando correo SMTP: {e}")
@@ -336,13 +336,13 @@ async def request_money(req: MoneyRequest):
 @app.get("/admin/login")
 async def admin_login_get(response: Response):
     resp = RedirectResponse(url="/admin/solicitudes", status_code=303)
-    resp.set_cookie(key="admin_user", value="Javier Martínez", httponly=True)
+    resp.set_cookie(key="admin_user", value="Jaiver Martínez", httponly=True)
     return resp
 
 @app.get("/admin/solicitudes", response_class=HTMLResponse)
 async def admin_solicitudes_view(request: Request, admin_user: str = Cookie(None)):
     if not admin_user or "jaiv" not in admin_user.lower():
-        return HTMLResponse("<h3>Acceso denegado. Este panel es exclusivo para el administrador Javier Martínez.</h3><p><a href='/admin/login'>Iniciar sesión como Administrador</a></p>", status_code=403)
+        return HTMLResponse("<h3>Acceso denegado. Este panel es exclusivo para el administrador Jaiver Martínez.</h3><p><a href='/admin/login'>Iniciar sesión como Administrador</a></p>", status_code=403)
 
     try:
         creds = get_google_credentials()
