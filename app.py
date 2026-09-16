@@ -254,6 +254,9 @@ async def evaluate_task(
     before_photo: UploadFile = File(...),
     after_photo: UploadFile = File(...)
 ):
+    start_time = time.time()
+    req_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"📥 [{req_time_str}] Petición recibida en /api/evaluate-task | Usuario: '{user_name}' | Tarea: '{task_name}' | Duración: {duration_minutes} min")
     try:
         timestamp = int(time.time())
         
@@ -284,20 +287,28 @@ async def evaluate_task(
         
         try:
             if client:
+                primary_model = 'gemini-3.6-flash'
+                fallback_model = 'gemini-2.5-flash'
                 response = None
+                
+                print(f"🤖 [{datetime.now().strftime('%H:%M:%S')}] Intentando invocar modelo de IA principal: {primary_model}...")
+                
                 try:
                     response = client.models.generate_content(
-                        model='gemini-3.6-flash',
+                        model=primary_model,
                         contents=[img_before, img_after, prompt],
                         config=types.GenerateContentConfig(response_mime_type="application/json")
                     )
+                    print(f"✅ [{datetime.now().strftime('%H:%M:%S')}] Respuesta recibida exitosamente desde {primary_model}.")
                 except Exception as model_err:
-                    print(f"⚠️ Error o indisponibilidad con gemini-3.6-flash ({model_err}). Reintentando con gemini-2.5-flash...")
+                    err_type = type(model_err).__name__
+                    print(f"⚠️ [{datetime.now().strftime('%H:%M:%S')}] Fallo/Indisponibilidad con {primary_model} [Tipo de error: {err_type} - Detalle: {model_err}]. Transicionando al modelo de respaldo: {fallback_model}...")
                     response = client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model=fallback_model,
                         contents=[img_before, img_after, prompt],
                         config=types.GenerateContentConfig(response_mime_type="application/json")
                     )
+                    print(f"✅ [{datetime.now().strftime('%H:%M:%S')}] Respuesta recibida exitosamente desde el modelo de respaldo {fallback_model}.")
 
                 raw = response.text.strip()
                 if raw.startswith("```json"):
@@ -311,7 +322,7 @@ async def evaluate_task(
                 eval_data["observaciones"] = str(parsed.get("observaciones") or parsed.get("observacion") or "Sin observaciones detalladas.")
         except Exception as e:
             error_msg = f"Error evaluando con IA: {str(e)}"
-            print(f"❌ {error_msg}")
+            print(f"❌ [{datetime.now().strftime('%H:%M:%S')}] {error_msg}")
             traceback.print_exc()
             eval_data = {"completado": True, "puntos": max_score, "observaciones": error_msg}
 
@@ -330,6 +341,9 @@ async def evaluate_task(
             0
         ])
 
+        total_duration = round(time.time() - start_time, 2)
+        print(f"⏱️ [{datetime.now().strftime('%H:%M:%S')}] Procesamiento total completado en {total_duration} segundos para /api/evaluate-task.")
+
         return {
             "status": "success",
             "user_name": user_name,
@@ -343,7 +357,8 @@ async def evaluate_task(
         }
 
     except Exception as e:
-        print(f"❌ Error en evaluate_task: {e}")
+        total_duration = round(time.time() - start_time, 2)
+        print(f"❌ [{datetime.now().strftime('%H:%M:%S')}] Error crítico en evaluate_task tras {total_duration}s: {e}")
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
