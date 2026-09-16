@@ -284,7 +284,7 @@ async def request_money(req: MoneyRequest):
         if puntos_actuales < puntos_a_descontar:
             return {
                 "status": "error",
-                "message": f"No tienes suficientes puntos acumulados esta semana."
+                "message": "No tienes suficientes puntos acumulados esta semana."
             }
             
         now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
@@ -492,6 +492,8 @@ async def evaluate_task(
     start_time = time.time()
     req_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"📥 [{req_time_str}] Petición recibida en /api/evaluate-task | Usuario: '{user_name}' | Tarea: '{task_name}' | Duración: {duration_minutes} min")
+    
+    primary_model = 'gemini-3.6-flash'
     try:
         timestamp = int(time.time())
         
@@ -518,11 +520,10 @@ async def evaluate_task(
             f'{{"completado": true, "puntos": {max_score}, "observaciones": "evaluación detallada de 2 frases"}}'
         )
 
-        eval_data = {"completado": True, "puntos": max_score, "observaciones": "Evaluación completada correctamente."}
+        eval_data = {"completado": True, "puntos": max_score, "observaciones": f"[Modelo utilizado: {primary_model}] Evaluación completada correctamente."}
         
         try:
             if client:
-                primary_model = 'gemini-3.6-flash'
                 response = None
                 
                 print(f"🤖 [{datetime.now().strftime('%H:%M:%S')}] Intentando invocar modelo de IA principal: {primary_model}...")
@@ -552,13 +553,14 @@ async def evaluate_task(
                 
                 eval_data["completado"] = bool(parsed.get("completado", True))
                 eval_data["puntos"] = int(parsed.get("puntos", max_score))
-                eval_data["observaciones"] = str(parsed.get("observaciones") or parsed.get("observacion") or "Sin observaciones detalladas.")
+                obs_texto = str(parsed.get("observaciones") or parsed.get("observacion") or "Sin observaciones detalladas.")
+                eval_data["observaciones"] = f"[Modelo utilizado: {primary_model}] {obs_texto}"
         except Exception as e:
             err_str = str(e).lower()
             if "429" in err_str or "resource_exhausted" in err_str or "quota" in err_str:
-                error_msg = "En este momento la evaluación de la IA no está disponible por falta de cuota. Estará disponible al día siguiente."
+                error_msg = f"[Modelo que falló: {primary_model}] En este momento la evaluación de la IA no está disponible por falta de cuota. Estará disponible al día siguiente."
             else:
-                error_msg = f"Error evaluando con IA: {str(e)}"
+                error_msg = f"[Modelo que falló: {primary_model}] Error evaluando con IA: {str(e)}"
             print(f"❌ [{datetime.now().strftime('%H:%M:%S')}] {error_msg}")
             traceback.print_exc()
             eval_data = {"completado": True, "puntos": max_score, "observaciones": error_msg}
