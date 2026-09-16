@@ -237,7 +237,7 @@ async def request_money(req: MoneyRequest):
         
         return {
             "status": "success",
-            "message": f"¡Solicitud aprobada! Se han descontado {puntos_a_descontar} puntos por un valor de ${requested_amount:,.0f} COP.",
+            "message": "Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero",
             "puntos_descontados": puntos_a_descontar,
             "saldo_restante": saldo_restante
         }
