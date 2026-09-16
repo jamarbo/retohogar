@@ -264,19 +264,19 @@ async def evaluate_task(
         try:
             if client:
                 response = None
-                for intento in range(3):
-                    try:
-                        response = client.models.generate_content(
-                            model='gemini-3.6-flash', 
-                            contents=[img_before, img_after, prompt],
-                            config=types.GenerateContentConfig(response_mime_type="application/json")
-                        )
-                        break
-                    except Exception as api_err:
-                        if "503" in str(api_err) and intento < 2:
-                            time.sleep(2)
-                            continue
-                        raise api_err
+                try:
+                    response = client.models.generate_content(
+                        model='gemini-3.6-flash',
+                        contents=[img_before, img_after, prompt],
+                        config=types.GenerateContentConfig(response_mime_type="application/json")
+                    )
+                except Exception as model_err:
+                    print(f"⚠️ Error o indisponibilidad con gemini-3.6-flash ({model_err}). Reintentando con gemini-2.5-flash...")
+                    response = client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=[img_before, img_after, prompt],
+                        config=types.GenerateContentConfig(response_mime_type="application/json")
+                    )
 
                 raw = response.text.strip()
                 if raw.startswith("```json"):
