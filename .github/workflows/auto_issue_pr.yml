@@ -71,18 +71,36 @@ jobs:
           Este es el contenido actual de index.html:
           {html_code}
 
-          Modifica ambos archivos para cumplir por completo con lo que pide el usuario (por ejemplo, manejando reintentos de modelos de IA si aplica en el backend).
+          Modifica ambos archivos para cumplir por completo con lo que pide el usuario.
           Devuelve el código resultante de ambos archivos cumpliendo con el esquema solicitado.
           """
 
-          response = client.models.generate_content(
-              model='gemini-3.6-flash',
-              contents=prompt,
-              config=types.GenerateContentConfig(
-                  response_mime_type="application/json",
-                  response_schema=ProjectFiles,
-              ),
-          )
+          response = None
+          try:
+              print("Intentando generar contenido con el modelo principal: gemini-3.6-flash...")
+              response = client.models.generate_content(
+                  model='gemini-3.6-flash',
+                  contents=prompt,
+                  config=types.GenerateContentConfig(
+                      response_mime_type="application/json",
+                      response_schema=ProjectFiles,
+                  ),
+              )
+          except Exception as e:
+              print(f"Advertencia: Falló el modelo principal gemini-3.6-flash ({e}). Aplicando fallback a gemini-2.5-flash...")
+              try:
+                  response = client.models.generate_content(
+                      model='gemini-2.5-flash',
+                      contents=prompt,
+                      config=types.GenerateContentConfig(
+                          response_mime_type="application/json",
+                          response_schema=ProjectFiles,
+                      ),
+                  )
+                  print("¡Éxito utilizando el modelo de respaldo gemini-2.5-flash!")
+              except Exception as fallback_error:
+                  print(f"Error crítico: Ambos modelos fallaron. Fallback error: {fallback_error}")
+                  raise fallback_error
 
           # Parseamos la respuesta usando el modelo validado de Pydantic
           result = ProjectFiles.model_validate_json(response.text)
@@ -111,7 +129,7 @@ jobs:
             
             **Requerimiento del usuario:**
             ${{ github.event.issue.body }}
-          commit-message: "feat(ai): actualización multi-archivo con Pydantic para issue #${{ github.event.issue.number }}"
+          commit-message: "feat(ai): actualización multi-archivo con Pydantic y fallback para issue #${{ github.event.issue.number }}"
           author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           signoff: false
           delete-branch: true
