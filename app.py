@@ -191,6 +191,44 @@ async def saludo():
         "mensaje": "¡Bienvenido al proyecto RetoHogar! Tu plataforma para gamificar y organizar las tareas del hogar."
     }
 
+@app.post("/api/validate-money-request")
+async def validate_money_request(req: MoneyRequest):
+    try:
+        user_name = req.user_name
+        requested_amount = req.amount
+        
+        if requested_amount <= 0:
+            return {
+                "status": "error",
+                "message": "Ingresa un monto en pesos ($) mayor a cero."
+            }
+            
+        puntos_actuales = obtener_puntos_semana(user_name)
+        puntos_a_descontar = int((requested_amount / 10000.0) * 1000.0)
+        
+        if puntos_a_descontar <= 0:
+            return {
+                "status": "error",
+                "message": f"No tienes suficientes puntos acumulados esta semana (Tienes {puntos_actuales} pts disponibles, mínimo 1000 pts requeridos)."
+            }
+            
+        if puntos_actuales < puntos_a_descontar:
+            return {
+                "status": "error",
+                "message": f"No tienes suficientes puntos acumulados esta semana (Tienes {puntos_actuales} pts, requieres {puntos_a_descontar} pts para ${requested_amount:,.0f} COP)."
+            }
+            
+        return {
+            "status": "success",
+            "message": "Solicitud viable.",
+            "puntos_a_descontar": puntos_a_descontar,
+            "puntos_actuales": puntos_actuales
+        }
+    except Exception as e:
+        print(f"❌ Error validando solicitud de dinero: {e}")
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
 @app.post("/api/request-money")
 async def request_money(req: MoneyRequest):
     try:
@@ -237,7 +275,7 @@ async def request_money(req: MoneyRequest):
         
         return {
             "status": "success",
-            "message": "Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero",
+            "message": "¡Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero",
             "puntos_descontados": puntos_a_descontar,
             "saldo_restante": saldo_restante
         }
