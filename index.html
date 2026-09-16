@@ -9,7 +9,10 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-start p-4">
     <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700 relative">
-        <h1 class="text-2xl font-bold text-center mb-6 text-amber-400">🧹 Reto del Hogar</h1>
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-amber-400">🧹 Reto del Hogar</h1>
+            <a href="/admin/login" target="_blank" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg text-slate-300 font-medium transition">Panel Admin</a>
+        </div>
         
         <!-- Pestañas -->
         <div class="flex rounded-lg bg-slate-700 p-1 mb-6">
@@ -211,7 +214,7 @@
     <div id="modal-money-success" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-800 border border-emerald-500/40 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
             <div class="text-3xl">🎉</div>
-            <h3 class="text-base font-bold text-emerald-400">Solicitud Procesada</h3>
+            <h3 class="text-base font-bold text-emerald-400">Solicitud Enviada</h3>
             <p id="modal-money-success-text" class="text-sm text-slate-200 font-medium leading-relaxed">
                 ¡Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero
             </p>

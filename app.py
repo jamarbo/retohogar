@@ -62,7 +62,7 @@ class MoneyRequest(BaseModel):
 
 class AdminActionRequest(BaseModel):
     row_index: int
-    action: str # "aprobar" o "rechazar"
+    action: str
 
 def get_colombia_now():
     return datetime.utcnow() - timedelta(hours=5)
@@ -175,7 +175,6 @@ def obtener_puntos_semana(usuario_keyword: str) -> int:
             puntos_redimidos_str = str(fila[10]).strip() if len(fila) > 10 else "0"
             estado_val = str(fila[11]).strip().lower() if len(fila) > 11 else ""
 
-            # Si la solicitud de dinero fue rechazada, no afecta puntos
             if estado_val == "rechazado":
                 continue
 
@@ -290,7 +289,6 @@ async def request_money(req: MoneyRequest):
             
         now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Registrar en estado Pendiente (sin descontar puntos todavía)
         guardar_en_sheet([
             now_colombia,
             user_name,
@@ -299,14 +297,13 @@ async def request_money(req: MoneyRequest):
             "Sí",
             0,
             0,
-            f"Solicitud web de ${requested_amount:,.0f} COP pendiente de aprobación. (${puntos_a_descontar} pts)",
+            f"Solicitud web de ${requested_amount:,.0f} COP pendiente de aprobación. ({puntos_a_descontar} pts)",
             "#",
             "#",
-            0, # Puntos redimidos en 0 hasta que se apruebe
-            "Pendiente" # Estado de la solicitud
+            0,
+            "Pendiente"
         ])
         
-        # Enviar notificación SMTP
         asunto_correo = f"💰 Nueva Solicitud de Dinero Pendiente - {user_name}"
         cuerpo_html = f"""
         <html>
@@ -327,7 +324,7 @@ async def request_money(req: MoneyRequest):
         
         return {
             "status": "success",
-            "message": "¡Felicitaciones, su solicitud es viable y ha sido enviada para aprobación del administrador!",
+            "message": "¡Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero",
             "puntos_descontados": 0,
             "saldo_restante": puntos_actuales
         }
@@ -338,7 +335,6 @@ async def request_money(req: MoneyRequest):
 
 @app.get("/admin/login")
 async def admin_login_get(response: Response):
-    # Endpoint simple para auto-asignar la sesión de administrador a Javier Martínez
     resp = RedirectResponse(url="/admin/solicitudes", status_code=303)
     resp.set_cookie(key="admin_user", value="Javier Martínez", httponly=True)
     return resp
@@ -389,9 +385,9 @@ async def admin_solicitudes_view(request: Request, admin_user: str = Cookie(None
     """
 
     if not solicitudes_pendientes:
-        html_content += `<p class="text-slate-400 text-sm py-4">No hay solicitudes pendientes de aprobación en este momento.</p>`
+        html_content += '<p class="text-slate-400 text-sm py-4">No hay solicitudes pendientes de aprobación en este momento.</p>'
     else:
-        html_content += `<div class="space-y-3">`
+        html_content += '<div class="space-y-3">'
         for sol in solicitudes_pendientes:
             html_content += f"""
                 <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -406,31 +402,31 @@ async def admin_solicitudes_view(request: Request, admin_user: str = Cookie(None
                     </div>
                 </div>
             """
-        html_content += `</div>`
+        html_content += '</div>'
 
     html_content += f"""
             </div>
         </div>
         <script>
-            async function procesarSolicitud(rowIndex, action) {
-                if(!confirm(`¿Estás seguro de que deseas ${action} esta solicitud?`)) return;
-                try {
+            async function procesarSolicitud(rowIndex, action) {{
+                if(!confirm(`¿Estás seguro de que deseas ${{action}} esta solicitud?`)) return;
+                try {{
                     const res = await fetch('/api/admin/process-money', {{
                         method: 'POST',
                         headers: {{ 'Content-Type': 'application/json' }},
                         body: JSON.stringify({{ row_index: rowIndex, action: action }})
                     }});
                     const data = await res.json();
-                    if(data.status === 'success') {
+                    if(data.status === 'success') {{
                         alert(data.message);
                         location.reload();
-                    } else {
+                    }} else {{
                         alert('Error: ' + data.message);
-                    }
-                } catch(e) {
+                    }}
+                }} catch(e) {{
                     alert('Error de conexión al procesar la solicitud.');
-                }
-            }
+                }}
+            }}
         </script>
     </body>
     </html>
@@ -457,22 +453,15 @@ async def process_money_request(req: AdminActionRequest, admin_user: str = Cooki
         detalle_actual = fila[7]
         
         if action == "aprobar":
-            # Extraer puntos del detalle o calcular de nuevo si es necesario
-            puntos_a_descontar = 0
-            for part in detalle_actual.split():
-                if part.startswith("($") or "pts" in part:
-                    pass
-            # Buscar puntos en la columna 11 o extraer del texto
+            puntos_a_descontar = 1000
             try:
-                # Buscamos números dentro de paréntesis en el detalle
                 import re
                 match = re.search(r'\((\d+)\s*pts\)', detalle_actual)
                 if match:
                     puntos_a_descontar = int(match.group(1))
             except:
-                puntos_a_descontar = 1000
+                pass
 
-            # Actualizar columna 11 con los puntos redimidos y columna 12 a Aprobado
             sheet.update_cell(row_idx, 11, puntos_a_descontar)
             sheet.update_cell(row_idx, 12, "Aprobado")
             sheet.update_cell(row_idx, 8, detalle_actual.replace("pendiente de aprobación", "APROBADO por administrador"))
