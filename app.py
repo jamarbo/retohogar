@@ -149,6 +149,8 @@ def obtener_puntos_semana(usuario_keyword: str) -> int:
                 matched = True
             elif ("jaiv" in user_kw) and ("jaiv" in usuario_val or "martinez" in usuario_val):
                 matched = True
+            elif ("eli" in user_kw or "parra" in user_kw) and ("eli" in usuario_val or "parra" in usuario_val):
+                matched = True
 
             if not matched:
                 continue
@@ -182,27 +184,30 @@ async def request_money(req: MoneyRequest):
         user_name = req.user_name
         requested_amount = req.amount
         
+        if requested_amount <= 0:
+            return {
+                "status": "error",
+                "message": "Ingresa un monto en pesos ($) mayor a cero."
+            }
+            
         puntos_actuales = obtener_puntos_semana(user_name)
+        puntos_a_descontar = int((requested_amount / 10000.0) * 1000.0)
         
-        if puntos_actuales < 1000:
+        if puntos_a_descontar <= 0:
             return {
                 "status": "error",
-                "message": f"No tienes suficientes puntos acumulados esta semana (Tienes {puntos_actuales} pts, mínimo 1000 pts requeridos)."
+                "message": "El monto solicitado es demasiado bajo. Recuerda que 1,000 pts = $10,000 COP."
             }
             
-        monto_permitido = (puntos_actuales // 1000) * 10000
-        
-        if requested_amount > monto_permitido:
-            requested_fmt = f"{requested_amount:,.0f}"
-            monto_permitido_fmt = f"{monto_permitido:,.0f}"
+        if puntos_actuales < puntos_a_descontar:
             return {
                 "status": "error",
-                "message": f"El monto solicitado (${requested_fmt}) excede lo permitido por tus puntos actuales (${monto_permitido_fmt})."
+                "message": f"No tienes suficientes puntos acumulados esta semana (Tienes {puntos_actuales} pts, requieres {puntos_a_descontar} pts para ${requested_amount:,.0f} COP)."
             }
             
-        puntos_a_descontar = int((requested_amount / 10000) * 1000)
-        
+        saldo_restante = puntos_actuales - puntos_a_descontar
         now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
+        
         guardar_en_sheet([
             now_colombia,
             user_name,
@@ -211,14 +216,16 @@ async def request_money(req: MoneyRequest):
             "Sí",
             -puntos_a_descontar,
             0,
-            f"Solicitud web de ${requested_amount:,.0f} aprobada y procesada.",
+            f"Canje web de ${requested_amount:,.0f} COP procesado con éxito. Descuento: -{puntos_a_descontar} pts.",
             "#",
             "#"
         ])
         
         return {
             "status": "success",
-            "message": f"¡Solicitud aprobada! Se han descontado {puntos_a_descontar} puntos por un valor de ${requested_amount:,.0f}."
+            "message": f"¡Solicitud aprobada! Se han descontado {puntos_a_descontar} puntos por un valor de ${requested_amount:,.0f} COP.",
+            "puntos_descontados": puntos_a_descontar,
+            "saldo_restante": saldo_restante
         }
     except Exception as e:
         print(f"❌ Error procesando solicitud de dinero: {e}")
