@@ -98,7 +98,6 @@ def enviar_correo_smtp(asunto: str, contenido_html: str):
 
         msg.attach(MIMEText(contenido_html, 'html'))
 
-        # Timeout de 5 segundos para evitar que la red bloqueada congele el hilo de FastAPI
         with smtplib.SMTP(smtp_server, smtp_port, timeout=5) as server:
             server.starttls()
             server.login(smtp_user, smtp_password)
@@ -555,7 +554,11 @@ async def evaluate_task(
                 eval_data["puntos"] = int(parsed.get("puntos", max_score))
                 eval_data["observaciones"] = str(parsed.get("observaciones") or parsed.get("observacion") or "Sin observaciones detalladas.")
         except Exception as e:
-            error_msg = f"Error evaluando con IA: {str(e)}"
+            err_str = str(e).lower()
+            if "429" in err_str or "resource_exhausted" in err_str or "quota" in err_str:
+                error_msg = "En este momento la evaluación de la IA no está disponible por falta de cuota. Estará disponible al día siguiente."
+            else:
+                error_msg = f"Error evaluando con IA: {str(e)}"
             print(f"❌ [{datetime.now().strftime('%H:%M:%S')}] {error_msg}")
             traceback.print_exc()
             eval_data = {"completado": True, "puntos": max_score, "observaciones": error_msg}
