@@ -128,7 +128,8 @@ def obtener_puntos_semana(usuario_keyword: str) -> int:
         hoy_date = now.date()
         inicio_semana_date = hoy_date - timedelta(days=hoy_date.weekday())
         
-        total_puntos = 0
+        total_puntos_ganados = 0
+        total_puntos_redimidos = 0
         user_kw = usuario_keyword.lower()
 
         for fila in filas[1:]:
@@ -138,6 +139,7 @@ def obtener_puntos_semana(usuario_keyword: str) -> int:
             usuario_val = str(fila[1]).strip().lower()
             completado_val = str(fila[4]).strip().lower()
             puntos_str = str(fila[5]).strip()
+            puntos_redimidos_str = str(fila[10]).strip() if len(fila) > 10 else "0"
 
             if completado_val not in ["sí", "si", "true", "1", "yes"]:
                 continue
@@ -162,11 +164,22 @@ def obtener_puntos_semana(usuario_keyword: str) -> int:
 
             if fila_date >= inicio_semana_date:
                 try:
-                    total_puntos += int(float(puntos_str))
+                    pts = int(float(puntos_str))
+                    if pts > 0:
+                        total_puntos_ganados += pts
+                    elif pts < 0:
+                        total_puntos_redimidos += abs(pts)
                 except ValueError:
                     pass
 
-        return total_puntos
+                try:
+                    redim = int(float(puntos_redimidos_str))
+                    if redim > 0:
+                        total_puntos_redimidos += redim
+                except ValueError:
+                    pass
+
+        return max(0, total_puntos_ganados - total_puntos_redimidos)
     except Exception as e:
         print(f"❌ Error al obtener puntos semanales: {e}")
         return 0
@@ -196,7 +209,7 @@ async def request_money(req: MoneyRequest):
         if puntos_a_descontar <= 0:
             return {
                 "status": "error",
-                "message": "El monto solicitado es demasiado bajo. Recuerda que 1,000 pts = $10,000 COP."
+                "message": f"No tienes suficientes puntos acumulados esta semana (Tienes {puntos_actuales} pts disponibles, mínimo 1000 pts requeridos)."
             }
             
         if puntos_actuales < puntos_a_descontar:
@@ -214,11 +227,12 @@ async def request_money(req: MoneyRequest):
             "Solicitud de Dinero Web",
             0,
             "Sí",
-            -puntos_a_descontar,
+            0,
             0,
             f"Canje web de ${requested_amount:,.0f} COP procesado con éxito. Descuento: -{puntos_a_descontar} pts.",
             "#",
-            "#"
+            "#",
+            puntos_a_descontar
         ])
         
         return {
@@ -312,7 +326,8 @@ async def evaluate_task(
             max_score,
             eval_data.get('observaciones', ''),
             url_foto_antes,
-            url_foto_despues
+            url_foto_despues,
+            0
         ])
 
         return {
@@ -363,8 +378,12 @@ async def get_leaderboard(periodo: str = "hoy"):
             continue
         fecha_str = str(fila[0]).strip()
         usuario_val = str(fila[1]).strip().lower()
+        task_val = str(fila[2]).strip().lower()
         completado_val = str(fila[4]).strip().lower()
         puntos_str = str(fila[5]).strip()
+
+        if "solicitud de dinero" in task_val:
+            continue
 
         if completado_val not in ["sí", "si", "true", "1", "yes"]:
             continue
@@ -382,6 +401,8 @@ async def get_leaderboard(periodo: str = "hoy"):
 
         try:
             pts = int(float(puntos_str))
+            if pts < 0:
+                pts = 0
         except ValueError:
             pts = 0
 
@@ -418,9 +439,13 @@ async def get_cooperative_goal(meta_semanal: int = 12000):
                 if len(fila) < 6:
                     continue
                 fecha_str = str(fila[0]).strip()
+                task_val = str(fila[2]).strip().lower()
                 completado_val = str(fila[4]).strip().lower()
                 puntos_str = str(fila[5]).strip()
                 
+                if "solicitud de dinero" in task_val:
+                    continue
+
                 if completado_val not in ["sí", "si", "true", "1", "yes"]:
                     continue
                 try:
@@ -430,7 +455,9 @@ async def get_cooperative_goal(meta_semanal: int = 12000):
                 
                 if fila_date >= inicio_semana_date:
                     try:
-                        total_puntos_semana += int(float(puntos_str))
+                        pts = int(float(puntos_str))
+                        if pts > 0:
+                            total_puntos_semana += pts
                     except ValueError:
                         pass
     except Exception as e:
@@ -473,6 +500,9 @@ async def get_user_tasks(user: str, periodo: str = "semana"):
                 completado_val = str(fila[4]).strip().lower()
                 puntos_str = str(fila[5]).strip()
                 
+                if "solicitud de dinero" in task_name.lower():
+                    continue
+
                 observaciones = str(fila[7]).strip() if len(fila) > 7 else "Sin observaciones"
                 before_url = str(fila[8]).strip() if len(fila) > 8 else "#"
                 after_url = str(fila[9]).strip() if len(fila) > 9 else "#"
@@ -509,6 +539,8 @@ async def get_user_tasks(user: str, periodo: str = "semana"):
 
                 try:
                     pts = int(float(puntos_str))
+                    if pts < 0:
+                        pts = 0
                 except ValueError:
                     pts = 0
 
