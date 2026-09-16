@@ -32,6 +32,7 @@ TASK_POINTS = {
     "Esterilizar Gata": 3000,
     "Crear y Separar Arenero para Otra Gata": 2000,
     "Planchar la ropa": 1000,
+    "Arreglar el Reloj": 700,
     "Desparasitar Gata": 1000,
     "Arrancar Proyecto de Ortodoncia": 500, 
     "Limpiar las cacas / arenero": 200,
