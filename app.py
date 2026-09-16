@@ -3,10 +3,13 @@ import os
 import time
 import json
 import traceback
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta, date
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request, Cookie, Response
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from PIL import Image
 
 from google import genai
@@ -57,6 +60,10 @@ class MoneyRequest(BaseModel):
     user_name: str
     amount: float
 
+class AdminActionRequest(BaseModel):
+    row_index: int
+    action: str # "aprobar" o "rechazar"
+
 def get_colombia_now():
     return datetime.utcnow() - timedelta(hours=5)
 
@@ -72,6 +79,32 @@ def get_google_credentials():
     else:
         creds, _ = default()
         return creds
+
+def enviar_correo_smtp(asunto: str, contenido_html: str):
+    try:
+        smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+        smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+        smtp_user = os.environ.get("SMTP_USER", "javier.martinez@gmail.com")
+        smtp_password = os.environ.get("SMTP_PASSWORD", "")
+
+        if not smtp_password:
+            print("⚠️ SMTP_PASSWORD no configurado en el entorno. No se pudo enviar el correo.")
+            return
+
+        msg = MIMEMultipart()
+        msg['From'] = smtp_user
+        msg['To'] = "javier.martinez@gmail.com"
+        msg['Subject'] = asunto
+
+        msg.attach(MIMEText(contenido_html, 'html'))
+
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_user, "javier.martinez@gmail.com", msg.as_string())
+        print("✅ Correo de notificación SMTP enviado exitosamente.")
+    except Exception as e:
+        print(f"❌ Error enviando correo SMTP: {e}")
 
 def subir_foto_drive_usuario(user_name, filename, photo_bytes):
     try:
@@ -140,6 +173,11 @@ def obtener_puntos_semana(usuario_keyword: str) -> int:
             completado_val = str(fila[4]).strip().lower()
             puntos_str = str(fila[5]).strip()
             puntos_redimidos_str = str(fila[10]).strip() if len(fila) > 10 else "0"
+            estado_val = str(fila[11]).strip().lower() if len(fila) > 11 else ""
+
+            # Si la solicitud de dinero fue rechazada, no afecta puntos
+            if estado_val == "rechazado":
+                continue
 
             if completado_val not in ["sí", "si", "true", "1", "yes"]:
                 continue
@@ -244,21 +282,15 @@ async def request_money(req: MoneyRequest):
         puntos_actuales = obtener_puntos_semana(user_name)
         puntos_a_descontar = int((requested_amount / 10000.0) * 1000.0)
         
-        if puntos_a_descontar <= 0:
-            return {
-                "status": "error",
-                "message": f"No tienes suficientes puntos acumulados esta semana (Tienes {puntos_actuales} pts disponibles, mínimo 1000 pts requeridos)."
-            }
-            
         if puntos_actuales < puntos_a_descontar:
             return {
                 "status": "error",
-                "message": f"No tienes suficientes puntos acumulados esta semana (Tienes {puntos_actuales} pts, requieres {puntos_a_descontar} pts para ${requested_amount:,.0f} COP)."
+                "message": f"No tienes suficientes puntos acumulados esta semana."
             }
             
-        saldo_restante = puntos_actuales - puntos_a_descontar
         now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
         
+        # Registrar en estado Pendiente (sin descontar puntos todavía)
         guardar_en_sheet([
             now_colombia,
             user_name,
@@ -267,20 +299,196 @@ async def request_money(req: MoneyRequest):
             "Sí",
             0,
             0,
-            f"Canje web de ${requested_amount:,.0f} COP procesado con éxito. Descuento: -{puntos_a_descontar} pts.",
+            f"Solicitud web de ${requested_amount:,.0f} COP pendiente de aprobación. (${puntos_a_descontar} pts)",
             "#",
             "#",
-            puntos_a_descontar
+            0, # Puntos redimidos en 0 hasta que se apruebe
+            "Pendiente" # Estado de la solicitud
         ])
+        
+        # Enviar notificación SMTP
+        asunto_correo = f"💰 Nueva Solicitud de Dinero Pendiente - {user_name}"
+        cuerpo_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #0284c7;">Nueva Solicitud de Dinero en Reto del Hogar</h2>
+            <p>Se ha registrado una nueva solicitud que requiere tu aprobación:</p>
+            <ul>
+                <li><strong>Solicitante:</strong> {user_name}</li>
+                <li><strong>Monto:</strong> ${requested_amount:,.0f} COP</li>
+                <li><strong>Puntos equivalentes:</strong> {puntos_a_descontar} pts</li>
+                <li><strong>Fecha:</strong> {now_colombia}</li>
+            </ul>
+            <p>Por favor ingresa al panel de administración para aprobar o rechazar la solicitud.</p>
+        </body>
+        </html>
+        """
+        enviar_correo_smtp(asunto_correo, cuerpo_html)
         
         return {
             "status": "success",
-            "message": "¡Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero",
-            "puntos_descontados": puntos_a_descontar,
-            "saldo_restante": saldo_restante
+            "message": "¡Felicitaciones, su solicitud es viable y ha sido enviada para aprobación del administrador!",
+            "puntos_descontados": 0,
+            "saldo_restante": puntos_actuales
         }
     except Exception as e:
         print(f"❌ Error procesando solicitud de dinero: {e}")
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
+@app.get("/admin/login")
+async def admin_login_get(response: Response):
+    # Endpoint simple para auto-asignar la sesión de administrador a Javier Martínez
+    resp = RedirectResponse(url="/admin/solicitudes", status_code=303)
+    resp.set_cookie(key="admin_user", value="Javier Martínez", httponly=True)
+    return resp
+
+@app.get("/admin/solicitudes", response_class=HTMLResponse)
+async def admin_solicitudes_view(request: Request, admin_user: str = Cookie(None)):
+    if not admin_user or "jaiv" not in admin_user.lower():
+        return HTMLResponse("<h3>Acceso denegado. Este panel es exclusivo para el administrador Javier Martínez.</h3><p><a href='/admin/login'>Iniciar sesión como Administrador</a></p>", status_code=403)
+
+    try:
+        creds = get_google_credentials()
+        gc = gspread.authorize(creds)
+        sheet = gc.open(SHEET_NAME).sheet1
+        filas = sheet.get_all_values()
+        
+        solicitudes_pendientes = []
+        if len(filas) > 1:
+            for idx, fila in enumerate(filas[1:], start=2):
+                if len(fila) >= 12 and "solicitud de dinero" in str(fila[2]).lower() and str(fila[11]).strip().lower() == "pendiente":
+                    solicitudes_pendientes.append({
+                        "row_index": idx,
+                        "fecha": fila[0],
+                        "usuario": fila[1],
+                        "detalle": fila[7],
+                        "puntos": fila[10] if len(fila) > 10 else "0"
+                    })
+    except Exception as e:
+        print(f"Error cargando solicitudes pendientes: {e}")
+        solicitudes_pendientes = []
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Panel de Administración - Reto del Hogar</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-slate-900 text-slate-100 min-h-screen p-6">
+        <div class="max-w-4xl mx-auto space-y-6">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-4">
+                <h1 class="text-2xl font-bold text-amber-400">🛡️ Panel de Administración - Aprobación de Solicitudes</h1>
+                <a href="/" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-xs">Volver al Inicio</a>
+            </div>
+            
+            <div class="bg-slate-800 rounded-2xl p-5 border border-slate-700 shadow-xl space-y-4">
+                <h2 class="text-lg font-bold text-cyan-400">Solitudes de Dinero Pendientes</h2>
+    """
+
+    if not solicitudes_pendientes:
+        html_content += `<p class="text-slate-400 text-sm py-4">No hay solicitudes pendientes de aprobación en este momento.</p>`
+    else:
+        html_content += `<div class="space-y-3">`
+        for sol in solicitudes_pendientes:
+            html_content += f"""
+                <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <div class="font-bold text-amber-300 text-base">{sol['usuario']}</div>
+                        <div class="text-xs text-slate-300">{sol['detalle']}</div>
+                        <div class="text-[10px] text-slate-500 mt-1">📅 {sol['fecha']}</div>
+                    </div>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button onclick="procesarSolicitud({sol['row_index']}, 'aprobar')" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg text-xs transition">Aprobar</button>
+                        <button onclick="procesarSolicitud({sol['row_index']}, 'rechazar')" class="flex-1 sm:flex-none bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-lg text-xs transition">Rechazar</button>
+                    </div>
+                </div>
+            """
+        html_content += `</div>`
+
+    html_content += f"""
+            </div>
+        </div>
+        <script>
+            async function procesarSolicitud(rowIndex, action) {
+                if(!confirm(`¿Estás seguro de que deseas ${action} esta solicitud?`)) return;
+                try {
+                    const res = await fetch('/api/admin/process-money', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ row_index: rowIndex, action: action }})
+                    }});
+                    const data = await res.json();
+                    if(data.status === 'success') {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                } catch(e) {
+                    alert('Error de conexión al procesar la solicitud.');
+                }
+            }
+        </script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(html_content)
+
+@app.post("/api/admin/process-money")
+async def process_money_request(req: AdminActionRequest, admin_user: str = Cookie(None)):
+    if not admin_user or "jaiv" not in admin_user.lower():
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    try:
+        creds = get_google_credentials()
+        gc = gspread.authorize(creds)
+        sheet = gc.open(SHEET_NAME).sheet1
+        
+        row_idx = req.row_index
+        action = req.action.lower()
+        
+        fila = sheet.row_values(row_idx)
+        if not fila or len(fila) < 12:
+            return {"status": "error", "message": "Fila no encontrada o inválida en la hoja."}
+
+        detalle_actual = fila[7]
+        
+        if action == "aprobar":
+            # Extraer puntos del detalle o calcular de nuevo si es necesario
+            puntos_a_descontar = 0
+            for part in detalle_actual.split():
+                if part.startswith("($") or "pts" in part:
+                    pass
+            # Buscar puntos en la columna 11 o extraer del texto
+            try:
+                # Buscamos números dentro de paréntesis en el detalle
+                import re
+                match = re.search(r'\((\d+)\s*pts\)', detalle_actual)
+                if match:
+                    puntos_a_descontar = int(match.group(1))
+            except:
+                puntos_a_descontar = 1000
+
+            # Actualizar columna 11 con los puntos redimidos y columna 12 a Aprobado
+            sheet.update_cell(row_idx, 11, puntos_a_descontar)
+            sheet.update_cell(row_idx, 12, "Aprobado")
+            sheet.update_cell(row_idx, 8, detalle_actual.replace("pendiente de aprobación", "APROBADO por administrador"))
+            
+            return {"status": "success", "message": "Solicitud aprobada con éxito. Puntos descontados."}
+            
+        elif action == "rechazar":
+            sheet.update_cell(row_idx, 12, "Rechazado")
+            sheet.update_cell(row_idx, 8, detalle_actual.replace("pendiente de aprobación", "RECHAZADO por administrador"))
+            
+            return {"status": "success", "message": "Solicitud rechazada. Los puntos se mantienen intactos."}
+        else:
+            return {"status": "error", "message": "Acción no reconocida."}
+
+    except Exception as e:
+        print(f"❌ Error en process_money_request: {e}")
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
@@ -326,27 +534,25 @@ async def evaluate_task(
         try:
             if client:
                 primary_model = 'gemini-3.6-flash'
-                fallback_model = 'gemini-2.5-flash'
                 response = None
                 
                 print(f"🤖 [{datetime.now().strftime('%H:%M:%S')}] Intentando invocar modelo de IA principal: {primary_model}...")
                 
-                try:
-                    response = client.models.generate_content(
-                        model=primary_model,
-                        contents=[img_before, img_after, prompt],
-                        config=types.GenerateContentConfig(response_mime_type="application/json")
-                    )
-                    print(f"✅ [{datetime.now().strftime('%H:%M:%S')}] Respuesta recibida exitosamente desde {primary_model}.")
-                except Exception as model_err:
-                    err_type = type(model_err).__name__
-                    print(f"⚠️ [{datetime.now().strftime('%H:%M:%S')}] Fallo/Indisponibilidad con {primary_model} [Tipo de error: {err_type} - Detalle: {model_err}]. Transicionando al modelo de respaldo: {fallback_model}...")
-                    response = client.models.generate_content(
-                        model=fallback_model,
-                        contents=[img_before, img_after, prompt],
-                        config=types.GenerateContentConfig(response_mime_type="application/json")
-                    )
-                    print(f"✅ [{datetime.now().strftime('%H:%M:%S')}] Respuesta recibida exitosamente desde el modelo de respaldo {fallback_model}.")
+                max_retries = 3
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        response = client.models.generate_content(
+                            model=primary_model,
+                            contents=[img_before, img_after, prompt],
+                            config=types.GenerateContentConfig(response_mime_type="application/json")
+                        )
+                        print(f"✅ [{datetime.now().strftime('%H:%M:%S')}] Respuesta recibida exitosamente desde {primary_model}.")
+                        break
+                    except Exception as model_err:
+                        print(f"⚠️ Intento {attempt} falló con {primary_model}: {model_err}")
+                        if attempt == max_retries:
+                            raise model_err
+                        time.sleep(2)
 
                 raw = response.text.strip()
                 if raw.startswith("```json"):
@@ -376,7 +582,8 @@ async def evaluate_task(
             eval_data.get('observaciones', ''),
             url_foto_antes,
             url_foto_despues,
-            0
+            0,
+            "Completado"
         ])
 
         total_duration = round(time.time() - start_time, 2)
@@ -434,6 +641,10 @@ async def get_leaderboard(periodo: str = "hoy"):
         task_val = str(fila[2]).strip().lower()
         completado_val = str(fila[4]).strip().lower()
         puntos_str = str(fila[5]).strip()
+        estado_val = str(fila[11]).strip().lower() if len(fila) > 11 else ""
+
+        if estado_val == "rechazado":
+            continue
 
         if "solicitud de dinero" in task_val:
             continue
@@ -495,7 +706,11 @@ async def get_cooperative_goal(meta_semanal: int = 12000):
                 task_val = str(fila[2]).strip().lower()
                 completado_val = str(fila[4]).strip().lower()
                 puntos_str = str(fila[5]).strip()
+                estado_val = str(fila[11]).strip().lower() if len(fila) > 11 else ""
                 
+                if estado_val == "rechazado":
+                    continue
+
                 if "solicitud de dinero" in task_val:
                     continue
 
@@ -552,6 +767,10 @@ async def get_user_tasks(user: str, periodo: str = "semana"):
                 duracion = str(fila[3]).strip()
                 completado_val = str(fila[4]).strip().lower()
                 puntos_str = str(fila[5]).strip()
+                estado_val = str(fila[11]).strip().lower() if len(fila) > 11 else ""
+                
+                if estado_val == "rechazado":
+                    continue
                 
                 if "solicitud de dinero" in task_name.lower():
                     continue

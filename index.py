@@ -5,10 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reto del Hogar</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-start p-4">
     <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700 relative">
-        <h1 class="text-2xl font-bold text-center mb-6 text-amber-400">🧹 Reto del Hogar</h1>
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-amber-400">🧹 Reto del Hogar</h1>
+            <a href="/admin/login" target="_blank" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg text-slate-300 font-medium transition">Panel Admin</a>
+        </div>
         
         <!-- Pestañas -->
         <div class="flex rounded-lg bg-slate-700 p-1 mb-6">
@@ -22,8 +26,8 @@
                 <label class="block text-sm font-medium mb-1 text-slate-300">Integrante:</label>
                 <select id="user_name" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-amber-500">
                     <option value="Jaiver Martínez">Jaiver Martínez</option>
-                    <option value="Gabriela">Gabriela</option>
-                    <option value="Valeria">Valeria</option>
+                    <option value="Gabriela Martínez">Gabriela Martínez</option>
+                    <option value="Valeria Martínez">Valeria Martínez</option>
                     <option value="Elizabeth Parra">Elizabeth Parra</option>
                 </select>
             </div>
@@ -31,14 +35,22 @@
             <div>
                 <label class="block text-sm font-medium mb-1 text-slate-300">Seleccionar Tarea:</label>
                 <select id="task_name" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-amber-500">
+                    <option value="Esterilizar Gata">Esterilizar Gata (3000 pts)</option> 
+                    <option value="Crear y Separar Arenero para Otra Gata">Crear y Separar Arenero para Otra Gata (2000 pts)</option>
+                    <option value="Planchar la ropa">Planchar la ropa (1000 pts)</option>
+                    <option value="Desparasitar Gata">Desparasitar Gata (1000 pts)</option>
+                    <option value="Arrancar Proyecto de Ortodoncia">Arrancar Proyecto de Ortodoncia (500 pts)</option>
                     <option value="Limpiar las cacas / arenero">Limpiar las cacas / arenero (200 pts)</option>
-                    <option value="Trapear los baños">Trapear los baños (180 pts)</option>
-                    <option value="Hacer la comida">Hacer la comida (150 pts)</option>
-                    <option value="Lavar los platos">Lavar los platos (150 pts)</option>
+                    <option value="Lavar los baños">Lavar los baños (300 pts)</option>
+                    <option value="Hacer la comida">Hacer la comida (300 pts)</option>
+                    <option value="Calentar la comida">Calentar la comida (100 pts)</option>
+                    <option value="Lavar los platos">Lavar los platos (200 pts)</option>
                     <option value="Doblar la ropa dentro de los clósets">Doblar la ropa dentro de los clósets (140 pts)</option>
                     <option value="Sacar la ropa de la lavadora">Sacar la ropa de la lavadora (120 pts)</option>
                     <option value="Echar ropa a la lavadora">Echar ropa a la lavadora (110 pts)</option>
                     <option value="Botar la basura">Botar la basura (100 pts)</option>
+                    <option value="Hacer Mandados Tienda o Droguería">Hacer Mandados Tienda o Droguería (90 pts)</option>
+                    <option value="Tirar la Basura al Shut de Basuras">Tirar la Basura al Shut de Basuras (90 pts)</option>
                     <option value="Lavar la nevera">Lavar la nevera (90 pts)</option>
                     <option value="Trapear la sala">Trapear la sala (80 pts)</option>
                     <option value="Trapear las habitaciones">Trapear las habitaciones (80 pts)</option>
@@ -49,6 +61,13 @@
                     <option value="Limpiar el polvo de muebles">Limpiar el polvo de muebles (50 pts)</option>
                     <option value="Tender la cama">Tender la cama (40 pts)</option>
                 </select>
+            </div>
+
+            <!-- Botón de Solicitud de Plata Directa -->
+            <div class="pt-2">
+                <button onclick="openMoneyModal()" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 rounded-lg transition shadow-lg text-sm flex items-center justify-center gap-2">
+                    💰 Solicitar Plata
+                </button>
             </div>
 
             <!-- Paso 1: Foto Inicial -->
@@ -65,7 +84,19 @@
                 </div>
                 <label class="block text-sm font-medium text-amber-300">🏁 Paso 2: Foto DESPUÉS de terminar</label>
                 <input type="file" id="after_photo" accept="image/*" capture="environment" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-500 file:text-slate-900 hover:file:bg-emerald-600">
-                <button onclick="finishTask()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold py-3 rounded-lg transition shadow-lg">Finalizar y Calificar con IA</button>
+                <button id="btn-finish-task" onclick="finishTask()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold py-3 rounded-lg transition shadow-lg">Finalizar y Calificar con IA</button>
+            </div>
+
+            <!-- Indicador Visual de Carga / Progreso -->
+            <div id="loading-box" class="hidden mt-6 p-5 bg-slate-900 rounded-xl border border-amber-500/40 text-center space-y-4 shadow-lg">
+                <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-amber-500 border-t-transparent"></div>
+                <div class="space-y-1">
+                    <p id="loading-status-text" class="font-bold text-amber-400 text-sm">Procesando evidencias...</p>
+                    <p class="text-xs text-slate-400">Por favor no cierres la ventana mientras la IA evalúa tu esfuerzo.</p>
+                </div>
+                <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                    <div id="progress-bar" class="bg-amber-500 h-2.5 rounded-full transition-all duration-500 w-1/3"></div>
+                </div>
             </div>
 
             <!-- Resultado de la IA -->
@@ -82,7 +113,7 @@
                 </div>
                 <button onclick="resetApp()" class="w-full mt-2 bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded transition">Hacer otra tarea</button>
             </div>
-        </div>
+        </div>		
 
         <!-- Sección Podio Real -->
         <div id="section-podium" class="space-y-4">
@@ -90,6 +121,21 @@
                 <button onclick="loadLeaderboard('hoy')" id="p-hoy" class="px-3 py-1 bg-slate-700 text-slate-300 text-xs rounded-full">Hoy</button>
                 <button onclick="loadLeaderboard('semana')" id="p-semana" class="px-3 py-1 bg-amber-500 text-slate-900 font-bold text-xs rounded-full shadow">Esta Semana</button>
                 <button onclick="loadLeaderboard('mes')" id="p-mes" class="px-3 py-1 bg-slate-700 text-slate-300 text-xs rounded-full">Este Mes</button>
+            </div>
+
+            <!-- Tarjeta de Reto Grupal con Mensaje Explicativo -->
+            <div id="group-challenge-card" class="bg-gradient-to-r from-amber-500/10 to-slate-900 border border-amber-500/40 rounded-2xl p-4 space-y-2 mb-4 shadow-md">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">🤝 Reto Grupal Semanal</span>
+                    <span id="group-challenge-points" class="text-xs font-extrabold text-amber-300">0 / 12,000 pts</span>
+                </div>
+                <!-- Barra de Progreso Grupal -->
+                <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div id="group-progress-bar" class="bg-amber-500 h-2 rounded-full transition-all duration-500" style="width: 0%;"></div>
+                </div>
+                <p class="text-[11px] text-slate-300 leading-tight">
+                    💡 <strong class="text-amber-300">¿Qué pasa si lo logramos?</strong> Al alcanzar la meta conjunta de la familia antes de finalizar la semana, <span class="text-amber-200">se desbloquea una recompensa en equipo</span> (como una salida especial o una cena en conjunto).
+                </p>
             </div>
 
             <div id="podium-content" class="space-y-3">
@@ -101,10 +147,15 @@
     <!-- Modal de Detalle de Tareas del Usuario -->
     <div id="modal-detalle" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-700 w-full max-w-lg rounded-2xl p-5 shadow-2xl max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-700 pb-3">
                 <h2 id="modal-title" class="text-lg font-bold text-amber-400">Detalle de Tareas</h2>
                 <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
             </div>
+            
+            <div class="mb-3">
+                <input type="text" id="filter-tasks" oninput="filterUserTasks()" placeholder="🔍 Buscar por nombre de tarea..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+            </div>
+
             <div id="modal-body" class="overflow-y-auto space-y-4 pr-1 flex-1">
                 <!-- Tarjetas de tareas individuales -->
             </div>
@@ -112,9 +163,72 @@
         </div>
     </div>
 
+    <!-- Modal de Solicitar Plata (Ingreso de Monto) -->
+    <div id="modal-money" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+                <h2 class="text-lg font-bold text-cyan-400">💰 Solicitar Plata</h2>
+                <button onclick="closeMoneyModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+            </div>
+            <div>
+                <label class="block text-xs text-slate-300 mb-1">¿Cuánto deseas solicitar?</label>
+                <input type="number" id="money-amount" placeholder="Ej: 10000" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 text-sm focus:outline-none focus:border-cyan-500">
+            </div>
+            <div id="money-response" class="hidden p-3 bg-slate-900 rounded-lg text-xs text-slate-200 border border-slate-700"></div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="closeMoneyModal()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2.5 rounded-xl font-medium transition text-slate-200">Cerrar</button>
+                <button id="btn-validate-money" onclick="validateAndRequestMoney()" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white text-xs py-2.5 rounded-xl font-bold transition shadow">Solicitar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación -->
+    <div id="modal-money-confirm" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
+            <div class="text-3xl">❓</div>
+            <h3 class="text-lg font-bold text-cyan-400">Confirmar Solicitud</h3>
+            <div id="modal-money-confirm-details" class="text-sm text-slate-200 leading-relaxed bg-slate-900 p-3 rounded-xl border border-slate-700 space-y-1 text-left">
+                <!-- Detalle insertado dinámicamente -->
+            </div>
+            <p class="text-xs text-slate-400">¿Desea proceder con esta solicitud?</p>
+            <div class="flex gap-2 pt-2">
+                <button onclick="cancelMoneyConfirmation()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2.5 rounded-xl font-medium transition text-slate-200">Cancelar</button>
+                <button id="btn-confirm-money" onclick="executeMoneyRequest()" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white text-xs py-2.5 rounded-xl font-bold transition shadow">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Secundario: Solicitud Cancelada -->
+    <div id="modal-money-cancel" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
+            <div class="text-3xl">ℹ️</div>
+            <h3 class="text-base font-bold text-slate-200">Solicitud Cancelada</h3>
+            <p class="text-sm text-slate-300 leading-relaxed">Usted ha cancelado su solicitud de dinero</p>
+            <button onclick="closeMoneyCancelModal()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 font-bold py-2.5 rounded-xl transition shadow text-xs">
+                Aceptar
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Secundario: Solicitud Exitosa / Aprobada -->
+    <div id="modal-money-success" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-emerald-500/40 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
+            <div class="text-3xl">🎉</div>
+            <h3 class="text-base font-bold text-emerald-400">Solicitud Enviada</h3>
+            <p id="modal-money-success-text" class="text-sm text-slate-200 font-medium leading-relaxed">
+                ¡Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero
+            </p>
+            <button onclick="closeMoneySuccessModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition shadow text-xs">
+                Aceptar
+            </button>
+        </div>
+    </div>
+
     <script>
-        let currentSessionId = null;
+        let startTime = null;
         let globalPeriodo = 'semana';
+        let allUserTasks = [];
+        let pendingMoneyRequest = null;
 
         function switchTab(tab, periodo = 'semana') {
             if(tab === 'task') {
@@ -132,9 +246,123 @@
             }
         }
 
-        async function startTask() {
+        function openMoneyModal() {
+            document.getElementById('money-amount').value = "";
+            document.getElementById('money-response').classList.add('hidden');
+            document.getElementById('modal-money').classList.remove('hidden');
+            pendingMoneyRequest = null;
+        }
+
+        function closeMoneyModal() {
+            document.getElementById('modal-money').classList.add('hidden');
+        }
+
+        async function validateAndRequestMoney() {
             const userName = document.getElementById('user_name').value;
-            const taskName = document.getElementById('task_name').value;
+            const amountVal = document.getElementById('money-amount').value;
+            const responseBox = document.getElementById('money-response');
+            const validateBtn = document.getElementById('btn-validate-money');
+
+            if(!amountVal || parseFloat(amountVal) <= 0) {
+                responseBox.classList.remove('hidden');
+                responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Error:</span> Por favor ingresa un monto válido mayor a cero.`;
+                return;
+            }
+
+            const amount = parseFloat(amountVal);
+            responseBox.classList.remove('hidden');
+            responseBox.innerText = "⏳ Verificando saldo de puntos...";
+            if(validateBtn) validateBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/validate-money-request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_name: userName, amount: amount })
+                });
+                const data = await res.json();
+
+                if(validateBtn) validateBtn.disabled = false;
+
+                if(data.status === "success") {
+                    pendingMoneyRequest = {
+                        userName: userName,
+                        amount: amount,
+                        ptsToDeduct: data.puntos_a_descontar
+                    };
+                    closeMoneyModal();
+                    
+                    const detailsHtml = `<div>👤 <strong>Usuario:</strong> ${userName}</div>` +
+                                        `<div>💰 <strong>Monto:</strong> $${amount.toLocaleString()} COP</div>` +
+                                        `<div>⭐ <strong>Puntos a descontar:</strong> ${data.puntos_a_descontar} pts</div>`;
+                    document.getElementById('modal-money-confirm-details').innerHTML = detailsHtml;
+                    document.getElementById('modal-money-confirm').classList.remove('hidden');
+                } else {
+                    responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Rechazado:</span> ${data.message}`;
+                }
+            } catch(e) {
+                if(validateBtn) validateBtn.disabled = false;
+                let errText = "No se pudo verificar la solicitud.";
+                if (e instanceof TypeError || (e.message && e.message.includes('Failed to fetch'))) {
+                    errText = "Error de conexión (Failed to fetch). Verifica tu internet e intentalo de nuevo.";
+                }
+                responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Error:</span> ${errText}`;
+            }
+        }
+
+        function cancelMoneyConfirmation() {
+            pendingMoneyRequest = null;
+            document.getElementById('modal-money-confirm').classList.add('hidden');
+            document.getElementById('modal-money-cancel').classList.remove('hidden');
+        }
+
+        function closeMoneyCancelModal() {
+            document.getElementById('modal-money-cancel').classList.add('hidden');
+        }
+
+        function closeMoneySuccessModal() {
+            document.getElementById('modal-money-success').classList.add('hidden');
+            if(!document.getElementById('section-podium').classList.contains('hidden')) {
+                loadLeaderboard(globalPeriodo);
+            }
+        }
+
+        async function executeMoneyRequest() {
+            if(!pendingMoneyRequest) return;
+            
+            const confirmBtn = document.getElementById('btn-confirm-money');
+            if(confirmBtn) confirmBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/request-money', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_name: pendingMoneyRequest.userName,
+                        amount: pendingMoneyRequest.amount
+                    })
+                });
+                const data = await res.json();
+                
+                if(confirmBtn) confirmBtn.disabled = false;
+                document.getElementById('modal-money-confirm').classList.add('hidden');
+
+                if(data.status === "success") {
+                    const msgText = data.message || "¡Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero";
+                    document.getElementById('modal-money-success-text').innerText = msgText;
+                    document.getElementById('modal-money-success').classList.remove('hidden');
+                } else {
+                    alert("Error al procesar la solicitud: " + data.message);
+                }
+            } catch(e) {
+                if(confirmBtn) confirmBtn.disabled = false;
+                alert("Error de conexión al procesar la solicitud.");
+            } finally {
+                pendingMoneyRequest = null;
+            }
+        }
+
+        function startTask() {
             const photoInput = document.getElementById('before_photo');
 
             if(photoInput.files.length === 0) {
@@ -142,89 +370,134 @@
                 return;
             }
 
-            const formData = new FormData();
-            formData.append("user_name", userName);
-            formData.append("task_name", taskName);
-            formData.append("before_photo", photoInput.files[0]);
-
-            const btn = event.target;
-            btn.innerText = "Subiendo evidencia inicial...";
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/api/start-task', { method: 'POST', body: formData });
-                const data = await res.json();
-                if(data.status === "started") {
-                    currentSessionId = data.session_id;
-                    document.getElementById('step-1').classList.add('hidden');
-                    document.getElementById('step-2').classList.remove('hidden');
-                } else {
-                    alert("Error: " + data.message);
-                    btn.innerText = "Iniciar Tarea";
-                    btn.disabled = false;
-                }
-            } catch(e) {
-                alert("Error de conexión: " + e);
-                btn.innerText = "Iniciar Tarea";
-                btn.disabled = false;
-            }
+            startTime = new Date();
+            
+            document.getElementById('step-1').classList.add('hidden');
+            document.getElementById('step-2').classList.remove('hidden');
         }
 
         async function finishTask() {
-            const photoInput = document.getElementById('after_photo');
-            if(photoInput.files.length === 0) {
+            const photoBefore = document.getElementById('before_photo');
+            const photoAfter = document.getElementById('after_photo');
+            
+            if(photoAfter.files.length === 0) {
                 alert("Por favor toma o selecciona la foto final.");
                 return;
             }
 
-            const formData = new FormData();
-            formData.append("session_id", currentSessionId);
-            formData.append("after_photo", photoInput.files[0]);
+            const finishBtn = document.getElementById('btn-finish-task');
+            if (finishBtn) finishBtn.disabled = true;
+            document.getElementById('step-2').classList.add('hidden');
+            
+            const loadingBox = document.getElementById('loading-box');
+            const statusText = document.getElementById('loading-status-text');
+            const progressBar = document.getElementById('progress-bar');
+            loadingBox.classList.remove('hidden');
 
-            const btn = event.target;
-            btn.innerText = "Analizando con Gemini y guardando...";
-            btn.disabled = true;
+            const endTime = new Date();
+            const durationMinutes = Math.max(1, Math.round((endTime - startTime) / 60000));
+
+            let finalBeforePhoto = photoBefore.files[0];
+            let finalAfterPhoto = photoAfter.files[0];
+
+            const compOptions = {
+                maxSizeMB: 1,
+                maxWidthOrHeight: 1280,
+                useWebWorker: true
+            };
 
             try {
-                const res = await fetch('/api/finish-task', { method: 'POST', body: formData });
-                const data = await res.json();
-                if(data.status === "finished") {
-                    document.getElementById('step-2').classList.add('hidden');
-                    document.getElementById('result-box').classList.remove('hidden');
+                statusText.innerText = "Comprimiendo fotos para optimizar espacio...";
+                progressBar.style.width = "40%";
+                finalBeforePhoto = await imageCompression(photoBefore.files[0], compOptions);
+                finalAfterPhoto = await imageCompression(photoAfter.files[0], compOptions);
+            } catch (error) {
+                console.error("Error en compresión, usando originales", error);
+            }
 
-                    document.getElementById('res-user').innerText = `👤 Responsable: ${data.user_name}`;
-                    document.getElementById('res-duration').innerText = `⏱️ Duración: ${data.duration_minutes} min`;
-                    document.getElementById('res-status').innerText = `✅ Completado: ${data.completado ? 'Sí' : 'No'}`;
-                    document.getElementById('res-points').innerText = `⭐ Puntos obtenidos: +${data.puntos} / ${data.max_points}`;
-                    document.getElementById('res-obs').innerText = `📝 Observaciones: ${data.observaciones}`;
-                    
-                    document.getElementById('link-before').href = data.before_url;
-                    document.getElementById('link-after').href = data.after_url;
+            statusText.innerText = "Subiendo evidencias y analizando con IA...";
+            progressBar.style.width = "80%";
+
+            const formData = new FormData();
+            formData.append("user_name", document.getElementById('user_name').value);
+            formData.append("task_name", document.getElementById('task_name').value);
+            formData.append("duration_minutes", durationMinutes);
+            formData.append("before_photo", finalBeforePhoto);
+            formData.append("after_photo", finalAfterPhoto);
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+            try {
+                const res = await fetch('/api/evaluate-task', { 
+                    method: 'POST', 
+                    body: formData, 
+                    signal: controller.signal 
+                });
+                clearTimeout(timeoutId);
+
+                if (!res.ok) {
+                    throw new Error(`Servidor respondió con código ${res.status}`);
+                }
+
+                const data = await res.json();
+                
+                if(data.status === "success") {
+                    progressBar.style.width = "100%";
+                    setTimeout(() => {
+                        loadingBox.classList.add('hidden');
+                        document.getElementById('result-box').classList.remove('hidden');
+
+                        document.getElementById('res-user').innerText = `👤 Responsable: ${data.user_name}`;
+                        document.getElementById('res-duration').innerText = `⏱️ Duración: ${data.duration_minutes} min`;
+                        document.getElementById('res-status').innerText = `✅ Completado: Sí`;
+                        document.getElementById('res-points').innerText = `⭐ Puntos obtenidos: +${data.puntos}`;
+                        document.getElementById('res-obs').innerText = `📝 Observaciones: ${data.observaciones}`;
+                        
+                        document.getElementById('link-before').href = data.before_url;
+                        document.getElementById('link-after').href = data.after_url;
+                    }, 400);
                 } else {
-                    alert("Error al finalizar: " + (data.message || "Desconocido"));
-                    btn.innerText = "Finalizar y Calificar con IA";
-                    btn.disabled = false;
+                    loadingBox.classList.add('hidden');
+                    document.getElementById('step-2').classList.remove('hidden');
+                    if (finishBtn) finishBtn.disabled = false;
+                    alert("Error al finalizar la tarea: " + (data.message || "Desconocido"));
                 }
             } catch(e) {
-                alert("Error crítico: " + e);
-                btn.innerText = "Finalizar y Calificar con IA";
-                btn.disabled = false;
+                clearTimeout(timeoutId);
+                loadingBox.classList.add('hidden');
+                document.getElementById('step-2').classList.remove('hidden');
+                if (finishBtn) finishBtn.disabled = false;
+
+                if (e.name === 'AbortError') {
+                    alert("⏱️ Tiempo de espera agotado: El servidor o el modelo de IA tardaron demasiado en responder. Por favor reintenta la evaluación.");
+                } else if (e instanceof TypeError || (e.message && e.message.includes('Failed to fetch'))) {
+                    alert("📡 Error de red o conexión (Failed to fetch): No se pudo completar la solicitud. Verifica tu conexión a internet o la disponibilidad del servidor y vuelve a intentarlo.");
+                } else {
+                    alert("❌ Error en la evaluación: " + (e.message || e));
+                }
             }
         }
 
         function resetApp() {
-            currentSessionId = null;
+            startTime = null;
             document.getElementById('result-box').classList.add('hidden');
+            document.getElementById('loading-box').classList.add('hidden');
             document.getElementById('step-2').classList.add('hidden');
             document.getElementById('step-1').classList.remove('hidden');
             document.getElementById('before_photo').value = "";
             document.getElementById('after_photo').value = "";
             const btn1 = document.querySelector('#step-1 button');
-            btn1.innerText = "Iniciar Tarea";
-            btn1.disabled = false;
-            const btn2 = document.querySelector('#step-2 button');
-            btn2.innerText = "Finalizar y Calificar con IA";
-            btn2.disabled = false;
+            if(btn1) {
+                btn1.innerText = "Iniciar Tarea";
+                btn1.disabled = false;
+            }
+            const btn2 = document.getElementById('btn-finish-task');
+            if(btn2) {
+                btn2.innerText = "Finalizar y Calificar con IA";
+                btn2.disabled = false;
+            }
+            document.getElementById('progress-bar').style.width = "33%";
         }
 
         async function loadLeaderboard(periodo) {
@@ -238,12 +511,31 @@
                 }
             });
 
+            const groupCard = document.getElementById('group-challenge-card');
+            if(periodo === 'hoy') {
+                groupCard.style.display = 'none';
+            } else {
+                groupCard.style.display = 'block';
+            }
+
             try {
                 const res = await fetch(`/api/leaderboard?periodo=${periodo}`);
+                if (!res.ok) throw new Error("Error de respuesta del servidor");
                 const data = await res.json();
                 
                 const sorted = Object.entries(data).sort((a,b) => b[1].puntos - a[1].puntos);
                 
+                let totalGroupPoints = 0;
+                Object.values(data).forEach(info => {
+                    totalGroupPoints += info.puntos;
+                });
+
+                const targetGoal = periodo === 'mes' ? 48000 : 12000;
+                const percentage = Math.min(100, Math.round((totalGroupPoints / targetGoal) * 100));
+
+                document.getElementById('group-challenge-points').innerText = `${totalGroupPoints.toLocaleString()} / ${targetGoal.toLocaleString()} pts (${percentage}%)`;
+                document.getElementById('group-progress-bar').style.width = `${percentage}%`;
+
                 let html = "";
                 
                 if(sorted.length > 0) {
@@ -252,7 +544,6 @@
                     const third = sorted.length > 2 ? sorted[2] : null;
                     const rest = sorted.slice(3);
 
-                    // 1er Lugar (Con clic habilitado para ver detalle)
                     html += `
                         <div onclick="openDetail('${first[0]}')" class="bg-gradient-to-b from-amber-500/20 to-slate-900 border-2 border-amber-500 rounded-2xl p-4 text-center shadow-lg relative overflow-hidden mb-3 cursor-pointer hover:border-amber-400 transition">
                             <div class="absolute top-2 right-3 text-2xl">👑</div>
@@ -315,11 +606,13 @@
                 document.getElementById('podium-content').innerHTML = html;
             } catch(e) {
                 console.error("Error cargando podio:", e);
+                document.getElementById('podium-content').innerHTML = `<p class="text-center text-red-400 text-xs py-4">📡 Error al cargar la clasificación. Revisa tu conexión.</p>`;
             }
         }
 
         async function openDetail(userName) {
             document.getElementById('modal-title').innerText = `Tareas de ${userName}`;
+            document.getElementById('filter-tasks').value = "";
             document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">Cargando tareas...</p>`;
             document.getElementById('modal-detalle').classList.remove('hidden');
 
@@ -330,40 +623,58 @@
                     throw new Error("Error en el servidor al obtener las tareas.");
                 }
 
-                const tasks = await res.json();
+                allUserTasks = await res.json();
 
-                if(!Array.isArray(tasks) || tasks.length === 0) {
+                if(!Array.isArray(allUserTasks) || allUserTasks.length === 0) {
                     document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">No hay tareas registradas en este período.</p>`;
                     return;
                 }
 
-                let html = "";
-                tasks.forEach((t) => {
-                    html += `
-                        <div class="bg-slate-900 border border-slate-700 rounded-xl p-3.5 space-y-2 text-xs">
-                            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                                <span class="font-bold text-amber-400 text-sm">${t.task_name}</span>
-                                <span class="bg-amber-500/10 text-amber-300 font-semibold px-2 py-0.5 rounded">${t.puntos} pts</span>
-                            </div>
-                            <div class="text-slate-400 flex justify-between">
-                                <span>📅 ${t.fecha}</span>
-                                <span>⏱️ ${t.duracion} min</span>
-                            </div>
-                            <div class="bg-slate-800/60 p-2 rounded space-y-1">
-                                <span class="text-amber-300 font-semibold block">📝 Observaciones:</span>
-                                <p class="text-slate-300 italic">${t.observaciones || 'Sin observaciones'}</p>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2 pt-1">
-                                <a href="${t.before_url}" target="_blank" class="block text-center bg-slate-800 hover:bg-slate-700 text-amber-300 py-2 rounded-lg font-medium transition border border-slate-700">📸 Ver Antes</a>
-                                <a href="${t.after_url}" target="_blank" class="block text-center bg-slate-800 hover:bg-slate-700 text-emerald-300 py-2 rounded-lg font-medium transition border border-slate-700">🏁 Ver Después</a>
-                            </div>
-                        </div>
-                    `;
-                });
-                document.getElementById('modal-body').innerHTML = html;
+                renderTaskList(allUserTasks);
             } catch(e) {
                 console.error(e);
-                document.getElementById('modal-body').innerHTML = `<p class="text-center text-red-400 py-4">Error al cargar el detalle.</p>`;
+                document.getElementById('modal-body').innerHTML = `<p class="text-center text-red-400 py-4">Error de conexión al cargar el detalle de tareas.</p>`;
+            }
+        }
+
+        function renderTaskList(tasks) {
+            let html = "";
+            tasks.forEach((t) => {
+                html += `
+                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-3.5 space-y-2 text-xs">
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                            <span class="font-bold text-amber-400 text-sm">${t.task_name}</span>
+                            <span class="bg-amber-500/10 text-amber-300 font-semibold px-2 py-0.5 rounded">${t.puntos} pts</span>
+                        </div>
+                        <div class="text-slate-400 flex justify-between">
+                            <span>📅 ${t.fecha}</span>
+                            <span>⏱️ ${t.duracion} min</span>
+                        </div>
+                        <div class="bg-slate-800/60 p-2 rounded space-y-1">
+                            <span class="text-amber-300 font-semibold block">📝 Observaciones:</span>
+                            <p class="text-slate-300 italic">${t.observaciones || 'Sin observaciones'}</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                            <a href="${t.before_url}" target="_blank" class="block text-center bg-slate-800 hover:bg-slate-700 text-amber-300 py-2 rounded-lg font-medium transition border border-slate-700">📸 Ver Antes</a>
+                            <a href="${t.after_url}" target="_blank" class="block text-center bg-slate-800 hover:bg-slate-700 text-emerald-300 py-2 rounded-lg font-medium transition border border-slate-700">🏁 Ver Después</a>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('modal-body').innerHTML = html;
+        }
+
+        function filterUserTasks() {
+            const query = document.getElementById('filter-tasks').value.toLowerCase();
+            const filtered = allUserTasks.filter(t => 
+                t.task_name.toLowerCase().includes(query) || 
+                t.observaciones.toLowerCase().includes(query)
+            );
+
+            if(filtered.length === 0) {
+                document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">No se encontraron tareas que coincidan con la búsqueda.</p>`;
+            } else {
+                renderTaskList(filtered);
             }
         }
 
@@ -371,7 +682,6 @@
             document.getElementById('modal-detalle').classList.add('hidden');
         }
 
-        // Arrancar directamente mostrando el Podio de la Semana por defecto al cargar la página
         switchTab('podium', 'semana');
     </script>
 </body>
