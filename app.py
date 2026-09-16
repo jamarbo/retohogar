@@ -98,13 +98,14 @@ def enviar_correo_smtp(asunto: str, contenido_html: str):
 
         msg.attach(MIMEText(contenido_html, 'html'))
 
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
+        # Timeout de 5 segundos para evitar que la red bloqueada congele el hilo de FastAPI
+        with smtplib.SMTP(smtp_server, smtp_port, timeout=5) as server:
             server.starttls()
             server.login(smtp_user, smtp_password)
             server.sendmail(smtp_user, "jaiver.martinez@gmail.com", msg.as_string())
         print("✅ Correo de notificación SMTP enviado exitosamente.")
     except Exception as e:
-        print(f"❌ Error enviando correo SMTP: {e}")
+        print(f"⚠️ Aviso SMTP (Red bloqueada en Render o fallo de conexión): {e}")
 
 def subir_foto_drive_usuario(user_name, filename, photo_bytes):
     try:
