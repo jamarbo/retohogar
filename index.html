@@ -165,7 +165,7 @@
         <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
             <div class="flex justify-between items-center border-b border-slate-700 pb-2">
                 <h2 class="text-lg font-bold text-cyan-400">💰 Solicitar Plata</h2>
-                <button onclick="closeMoneyModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+                <button onclick="cancelMoneyRequest()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
             </div>
             <div>
                 <label class="block text-xs text-slate-300 mb-1">¿Cuánto deseas solicitar?</label>
@@ -173,9 +173,35 @@
             </div>
             <div id="money-response" class="hidden p-3 bg-slate-900 rounded-lg text-xs text-slate-200 border border-slate-700"></div>
             <div class="flex gap-2 pt-2">
-                <button onclick="closeMoneyModal()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2.5 rounded-xl font-medium transition">Cancelar</button>
-                <button onclick="submitMoneyRequest()" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white text-xs py-2.5 rounded-xl font-bold transition shadow">Enviar Solicitud</button>
+                <button onclick="cancelMoneyRequest()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2.5 rounded-xl font-medium transition text-slate-200">Cancelar</button>
+                <button onclick="submitMoneyRequest()" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white text-xs py-2.5 rounded-xl font-bold transition shadow">Aceptar</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal Secundario: Solicitud Cancelada -->
+    <div id="modal-money-cancel" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
+            <div class="text-3xl">ℹ️</div>
+            <h3 class="text-base font-bold text-slate-200">Solicitud Cancelada</h3>
+            <p class="text-sm text-slate-300 leading-relaxed">Usted ha cancelado su solicitud de dinero</p>
+            <button onclick="closeMoneyCancelModal()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 font-bold py-2.5 rounded-xl transition shadow text-xs">
+                Aceptar
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Secundario: Solicitud Exitosa / Aprobada -->
+    <div id="modal-money-success" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-emerald-500/40 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
+            <div class="text-3xl">🎉</div>
+            <h3 class="text-base font-bold text-emerald-400">Solicitud Procesada</h3>
+            <p id="modal-money-success-text" class="text-sm text-slate-200 font-medium leading-relaxed">
+                Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero
+            </p>
+            <button onclick="closeMoneySuccessModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition shadow text-xs">
+                Aceptar
+            </button>
         </div>
     </div>
 
@@ -210,13 +236,30 @@
             document.getElementById('modal-money').classList.add('hidden');
         }
 
+        function cancelMoneyRequest() {
+            closeMoneyModal();
+            document.getElementById('modal-money-cancel').classList.remove('hidden');
+        }
+
+        function closeMoneyCancelModal() {
+            document.getElementById('modal-money-cancel').classList.add('hidden');
+        }
+
+        function closeMoneySuccessModal() {
+            document.getElementById('modal-money-success').classList.add('hidden');
+            if(!document.getElementById('section-podium').classList.contains('hidden')) {
+                loadLeaderboard(globalPeriodo);
+            }
+        }
+
         async function submitMoneyRequest() {
             const userName = document.getElementById('user_name').value;
             const amount = document.getElementById('money-amount').value;
             const responseBox = document.getElementById('money-response');
 
-            if(!amount || amount <= 0) {
-                alert("Por favor ingresa un monto válido.");
+            if(!amount || parseFloat(amount) <= 0) {
+                responseBox.classList.remove('hidden');
+                responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Error:</span> Por favor ingresa un monto válido mayor a cero.`;
                 return;
             }
 
@@ -232,7 +275,10 @@
                 const data = await res.json();
 
                 if(data.status === "success") {
-                    responseBox.innerHTML = `<span class="text-emerald-400 font-bold">✅ Solicitud Exitosa:</span> ${data.message}`;
+                    closeMoneyModal();
+                    const msgText = data.message || "Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero";
+                    document.getElementById('modal-money-success-text').innerText = msgText;
+                    document.getElementById('modal-money-success').classList.remove('hidden');
                 } else {
                     responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Rechazado:</span> ${data.message}`;
                 }
