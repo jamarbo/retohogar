@@ -160,12 +160,12 @@
         </div>
     </div>
 
-    <!-- Modal de Solicitar Plata -->
+    <!-- Modal de Solicitar Plata (Ingreso de Monto) -->
     <div id="modal-money" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
             <div class="flex justify-between items-center border-b border-slate-700 pb-2">
                 <h2 class="text-lg font-bold text-cyan-400">💰 Solicitar Plata</h2>
-                <button onclick="cancelMoneyRequest()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+                <button onclick="closeMoneyModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
             </div>
             <div>
                 <label class="block text-xs text-slate-300 mb-1">¿Cuánto deseas solicitar?</label>
@@ -173,8 +173,24 @@
             </div>
             <div id="money-response" class="hidden p-3 bg-slate-900 rounded-lg text-xs text-slate-200 border border-slate-700"></div>
             <div class="flex gap-2 pt-2">
-                <button onclick="cancelMoneyRequest()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2.5 rounded-xl font-medium transition text-slate-200">Cancelar</button>
-                <button onclick="submitMoneyRequest()" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white text-xs py-2.5 rounded-xl font-bold transition shadow">Aceptar</button>
+                <button onclick="closeMoneyModal()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2.5 rounded-xl font-medium transition text-slate-200">Cerrar</button>
+                <button id="btn-validate-money" onclick="validateAndRequestMoney()" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white text-xs py-2.5 rounded-xl font-bold transition shadow">Solicitar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación -->
+    <div id="modal-money-confirm" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
+            <div class="text-3xl">❓</div>
+            <h3 class="text-lg font-bold text-cyan-400">Confirmar Solicitud</h3>
+            <div id="modal-money-confirm-details" class="text-sm text-slate-200 leading-relaxed bg-slate-900 p-3 rounded-xl border border-slate-700 space-y-1 text-left">
+                <!-- Detalle insertado dinámicamente -->
+            </div>
+            <p class="text-xs text-slate-400">¿Desea proceder con esta solicitud?</p>
+            <div class="flex gap-2 pt-2">
+                <button onclick="cancelMoneyConfirmation()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2.5 rounded-xl font-medium transition text-slate-200">Cancelar</button>
+                <button id="btn-confirm-money" onclick="executeMoneyRequest()" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white text-xs py-2.5 rounded-xl font-bold transition shadow">Aceptar</button>
             </div>
         </div>
     </div>
@@ -197,7 +213,7 @@
             <div class="text-3xl">🎉</div>
             <h3 class="text-base font-bold text-emerald-400">Solicitud Procesada</h3>
             <p id="modal-money-success-text" class="text-sm text-slate-200 font-medium leading-relaxed">
-                Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero
+                ¡Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero
             </p>
             <button onclick="closeMoneySuccessModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition shadow text-xs">
                 Aceptar
@@ -209,6 +225,7 @@
         let startTime = null;
         let globalPeriodo = 'semana';
         let allUserTasks = [];
+        let pendingMoneyRequest = null;
 
         function switchTab(tab, periodo = 'semana') {
             if(tab === 'task') {
@@ -230,14 +247,69 @@
             document.getElementById('money-amount').value = "";
             document.getElementById('money-response').classList.add('hidden');
             document.getElementById('modal-money').classList.remove('hidden');
+            pendingMoneyRequest = null;
         }
 
         function closeMoneyModal() {
             document.getElementById('modal-money').classList.add('hidden');
         }
 
-        function cancelMoneyRequest() {
-            closeMoneyModal();
+        async function validateAndRequestMoney() {
+            const userName = document.getElementById('user_name').value;
+            const amountVal = document.getElementById('money-amount').value;
+            const responseBox = document.getElementById('money-response');
+            const validateBtn = document.getElementById('btn-validate-money');
+
+            if(!amountVal || parseFloat(amountVal) <= 0) {
+                responseBox.classList.remove('hidden');
+                responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Error:</span> Por favor ingresa un monto válido mayor a cero.`;
+                return;
+            }
+
+            const amount = parseFloat(amountVal);
+            responseBox.classList.remove('hidden');
+            responseBox.innerText = "⏳ Verificando saldo de puntos...";
+            if(validateBtn) validateBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/validate-money-request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_name: userName, amount: amount })
+                });
+                const data = await res.json();
+
+                if(validateBtn) validateBtn.disabled = false;
+
+                if(data.status === "success") {
+                    pendingMoneyRequest = {
+                        userName: userName,
+                        amount: amount,
+                        ptsToDeduct: data.puntos_a_descontar
+                    };
+                    closeMoneyModal();
+                    
+                    const detailsHtml = `<div>👤 <strong>Usuario:</strong> ${userName}</div>` +
+                                        `<div>💰 <strong>Monto:</strong> $${amount.toLocaleString()} COP</div>` +
+                                        `<div>⭐ <strong>Puntos a descontar:</strong> ${data.puntos_a_descontar} pts</div>`;
+                    document.getElementById('modal-money-confirm-details').innerHTML = detailsHtml;
+                    document.getElementById('modal-money-confirm').classList.remove('hidden');
+                } else {
+                    responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Rechazado:</span> ${data.message}`;
+                }
+            } catch(e) {
+                if(validateBtn) validateBtn.disabled = false;
+                let errText = "No se pudo verificar la solicitud.";
+                if (e instanceof TypeError || (e.message && e.message.includes('Failed to fetch'))) {
+                    errText = "Error de conexión (Failed to fetch). Verifica tu internet e intentalo de nuevo.";
+                }
+                responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Error:</span> ${errText}`;
+            }
+        }
+
+        function cancelMoneyConfirmation() {
+            pendingMoneyRequest = null;
+            document.getElementById('modal-money-confirm').classList.add('hidden');
             document.getElementById('modal-money-cancel').classList.remove('hidden');
         }
 
@@ -252,42 +324,38 @@
             }
         }
 
-        async function submitMoneyRequest() {
-            const userName = document.getElementById('user_name').value;
-            const amount = document.getElementById('money-amount').value;
-            const responseBox = document.getElementById('money-response');
-
-            if(!amount || parseFloat(amount) <= 0) {
-                responseBox.classList.remove('hidden');
-                responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Error:</span> Por favor ingresa un monto válido mayor a cero.`;
-                return;
-            }
-
-            responseBox.classList.remove('hidden');
-            responseBox.innerText = "⏳ Verificando puntos y procesando solicitud...";
+        async function executeMoneyRequest() {
+            if(!pendingMoneyRequest) return;
+            
+            const confirmBtn = document.getElementById('btn-confirm-money');
+            if(confirmBtn) confirmBtn.disabled = true;
 
             try {
                 const res = await fetch('/api/request-money', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_name: userName, amount: parseFloat(amount) })
+                    body: JSON.stringify({
+                        user_name: pendingMoneyRequest.userName,
+                        amount: pendingMoneyRequest.amount
+                    })
                 });
                 const data = await res.json();
+                
+                if(confirmBtn) confirmBtn.disabled = false;
+                document.getElementById('modal-money-confirm').classList.add('hidden');
 
                 if(data.status === "success") {
-                    closeMoneyModal();
-                    const msgText = data.message || "Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero";
+                    const msgText = data.message || "¡Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero";
                     document.getElementById('modal-money-success-text').innerText = msgText;
                     document.getElementById('modal-money-success').classList.remove('hidden');
                 } else {
-                    responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Rechazado:</span> ${data.message}`;
+                    alert("Error al procesar la solicitud: " + data.message);
                 }
             } catch(e) {
-                let errText = "No se pudo procesar la solicitud.";
-                if (e instanceof TypeError || (e.message && e.message.includes('Failed to fetch'))) {
-                    errText = "Error de conexión (Failed to fetch). Verifica tu internet e intentalo de nuevo.";
-                }
-                responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Error:</span> ${errText}`;
+                if(confirmBtn) confirmBtn.disabled = false;
+                alert("Error de conexión al procesar la solicitud.");
+            } finally {
+                pendingMoneyRequest = null;
             }
         }
 
