@@ -76,32 +76,52 @@ jobs:
           Devuelve el código resultante de ambos archivos cumpliendo con el esquema solicitado.
           """
 
-          max_retries = 5
-          base_delay = 15  # Segundos de espera base entre reintentos
+          models_to_try = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash']
+          max_retries = 3
+          base_delay = 10  # Segundos de espera base entre reintentos
           response = None
+          successful_model = None
 
-          for attempt in range(1, max_retries + 1):
-              try:
-                  print(f"Intento {attempt}/{max_retries} usando gemini-3.6-flash...")
-                  response = client.models.generate_content(
-                      model='gemini-3.6-flash',
-                      contents=prompt,
-                      config=types.GenerateContentConfig(
-                          response_mime_type="application/json",
-                          response_schema=ProjectFiles,
-                      ),
-                  )
-                  print("¡Éxito generando contenido con gemini-3.6-flash!")
+          for model_name in models_to_try:
+              print(f"\n--- Intentando con el modelo: {model_name} ---")
+              success_with_model = False
+              
+              for attempt in range(1, max_retries + 1):
+                  try:
+                      print(f"Intento {attempt}/{max_retries} usando {model_name}...")
+                      response = client.models.generate_content(
+                          model=model_name,
+                          contents=prompt,
+                          config=types.GenerateContentConfig(
+                              response_mime_type="application/json",
+                              response_schema=ProjectFiles,
+                          ),
+                      )
+                      print(f"¡Éxito generando contenido con {model_name}!")
+                      success_with_model = True
+                      successful_model = model_name
+                      break
+                  except Exception as e:
+                      print(f"Fallo en el intento {attempt} con {model_name}: {e}")
+                      if attempt < max_retries:
+                          sleep_time = base_delay * attempt
+                          print(f"Esperando {sleep_time} segundos antes de reintentar...")
+                          time.sleep(sleep_time)
+                      else:
+                          print(f"Se agotaron los reintentos para {model_name}.")
+
+              if success_with_model:
                   break
-              except Exception as e:
-                  print(f"Fallo en el intento {attempt}: {e}")
-                  if attempt < max_retries:
-                      sleep_time = base_delay * attempt
-                      print(f"Esperando {sleep_time} segundos antes de reintentar...")
-                      time.sleep(sleep_time)
-                  else:
-                      print("Se agotaron todos los reintentos permitidos para gemini-3.6-flash.")
-                      raise e
+              else:
+                  print(f"Cambiando al siguiente modelo disponible tras fallar con {model_name}...\n")
+
+          if not response:
+              raise Exception("Se agotaron todos los modelos y reintentos configurados sin éxito.")
+
+          # Guardamos el modelo exitoso en una variable de entorno temporal de GitHub si se requiere o se imprime claramente
+          print(f"\n✨ Proceso completado exitosamente utilizando el modelo: {successful_model}")
+          with open("successful_model.txt", "w") as sm_file:
+              sm_file.write(successful_model)
 
           # Parseamos la respuesta usando el modelo validado de Pydantic
           result = ProjectFiles.model_validate_json(response.text)
@@ -118,6 +138,15 @@ jobs:
 
           EOF
 
+      - name: Read Successful Model
+        id: read_model
+        run: |
+          if [ -f successful_model.txt ]; then
+            echo "MODEL_NAME=$(cat successful_model.txt)" >> $GITHUB_ENV
+          else
+            echo "MODEL_NAME=desconocido" >> $GITHUB_ENV
+          fi
+
       - name: Open Pull Request with Gemini Changes
         uses: peter-evans/create-pull-request@v6
         with:
@@ -126,11 +155,11 @@ jobs:
           base: "main"
           title: "Gemini AI PR: ${{ github.event.issue.title }}"
           body: |
-            🤖 Este Pull Request fue implementado automáticamente por **Gemini AI** actualizando el backend y frontend según tu Issue.
+            🤖 Este Pull Request fue implementado automáticamente por **Gemini AI** utilizando el modelo **`${{ env.MODEL_NAME }}`**, actualizando el backend y frontend según tu Issue.
             
             **Requerimiento del usuario:**
             ${{ github.event.issue.body }}
-          commit-message: "feat(ai): actualización multi-archivo con reintentos para gemini-3.6-flash (issue #${{ github.event.issue.number }})"
+          commit-message: "feat(ai): actualización multi-archivo con modelo ${{ env.MODEL_NAME }} (issue #${{ github.event.issue.number }})"
           author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           signoff: false
           delete-branch: true
