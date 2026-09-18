@@ -1,688 +1,836 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reto del Hogar</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
-</head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-start p-4">
-    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700 relative">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-amber-400">🧹 Reto del Hogar</h1>
-            <a href="/admin/login" target="_blank" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg text-slate-300 font-medium transition">Panel Admin</a>
-        </div>
+import io
+import os
+import time
+import json
+import traceback
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime, timedelta, date
+
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request, Cookie, Response
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from PIL import Image
+
+from google import genai
+from google.genai import types
+import gspread
+from google.auth import default
+from google.oauth2 import service_account
+from pydantic import BaseModel
+import base64
+import requests
+
+app = FastAPI(title="Reto del Hogar")
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+
+SHEET_NAME = "Registro_Tareas_Hogar"
+
+TASK_POINTS = {
+    "Esterilizar Gata": 3000,
+    "Crear y Separar Arenero para Otra Gata": 2000,
+    "Planchar la ropa": 1000,
+    "Arreglar el Reloj": 700,
+    "Desparasitar Gata": 1000,
+    "Arrancar Proyecto de Ortodoncia": 500, 
+    "Limpiar las cacas / arenero": 200,
+    "Lavar los baños": 300,
+    "Hacer la comida": 300,
+    "Calentar la comida": 100, 
+    "Lavar los platos": 200,
+    "Doblar la ropa dentro de los clósets": 140,
+    "Sacar la ropa de la lavadora": 120,
+    "Echar ropa a la lavadora": 110,
+    "Botar la basura": 100,
+    "Hacer Mandados Tienda o Droguería": 90,
+    "Tirar la Basura al Shut de Basuras": 90,
+    "Lavar la nevera": 90,
+    "Trapear la sala": 80,
+    "Trapear las habitaciones": 80,
+    "Colgar la ropa a secar": 70,
+    "Barrer la sala": 60,
+    "Barrer las habitaciones": 60,
+    "Limpiar los espejos": 50,
+    "Limpiar el polvo de muebles": 50,
+    "Tender la cama": 40
+}
+
+class MoneyRequest(BaseModel):
+    user_name: str
+    amount: float
+
+class AdminActionRequest(BaseModel):
+    row_index: int
+    action: str
+
+def get_colombia_now():
+    return datetime.utcnow() - timedelta(hours=5)
+
+def get_google_credentials():
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    if creds_json:
+        creds_dict = json.loads(creds_json)
+        return service_account.Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    else:
+        creds, _ = default()
+        return creds
+
+def enviar_correo_smtp(asunto: str, contenido_html: str):
+    try:
+        smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+        smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+        smtp_user = os.environ.get("SMTP_USER", "jaiver.martinez@gmail.com")
+        smtp_password = os.environ.get("SMTP_PASSWORD", "")
+
+        if not smtp_password:
+            print("⚠️ SMTP_PASSWORD no configurado en el entorno. No se pudo enviar el correo.")
+            return
+
+        msg = MIMEMultipart()
+        msg['From'] = smtp_user
+        msg['To'] = "jaiver.martinez@gmail.com"
+        msg['Subject'] = asunto
+
+        msg.attach(MIMEText(contenido_html, 'html'))
+
+        with smtplib.SMTP(smtp_server, smtp_port, timeout=5) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_user, "jaiver.martinez@gmail.com", msg.as_string())
+        print("✅ Correo de notificación SMTP enviado exitosamente.")
+    except Exception as e:
+        print(f"⚠️ Aviso SMTP (Red bloqueada en Render o fallo de conexión): {e}")
+
+def subir_foto_drive_usuario(user_name, filename, photo_bytes):
+    try:
+        github_token = os.environ.get("GITHUB_TOKEN")
+        repo_name = "jamarbo/retohogar"
         
-        <!-- Pestañas -->
-        <div class="flex rounded-lg bg-slate-700 p-1 mb-6">
-            <button onclick="switchTab('task')" id="btn-task" class="flex-1 py-2 rounded-md font-medium text-sm transition text-slate-300">⚡ Tarea</button>
-            <button onclick="switchTab('podium')" id="btn-podium" class="flex-1 py-2 rounded-md font-medium text-sm transition bg-amber-500 text-slate-900 shadow">🏆 Podio en Vivo</button>
-        </div>
-
-        <!-- Sección Tarea -->
-        <div id="section-task" class="space-y-4 hidden">
-            <div>
-                <label class="block text-sm font-medium mb-1 text-slate-300">Integrante:</label>
-                <select id="user_name" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-amber-500">
-                    <option value="Jaiver Martínez">Jaiver Martínez</option>
-                    <option value="Gabriela Martínez">Gabriela Martínez</option>
-                    <option value="Valeria Martínez">Valeria Martínez</option>
-                    <option value="Elizabeth Parra">Elizabeth Parra</option>
-                </select>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium mb-1 text-slate-300">Seleccionar Tarea:</label>
-                <select id="task_name" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-amber-500">
-                    <option value="Esterilizar Gata">Esterilizar Gata (3000 pts)</option> 
-                    <option value="Crear y Separar Arenero para Otra Gata">Crear y Separar Arenero para Otra Gata (2000 pts)</option>
-                    <option value="Planchar la ropa">Planchar la ropa (1000 pts)</option>
-                    <option value="Desparasitar Gata">Desparasitar Gata (1000 pts)</option>
-                    <option value="Arrancar Proyecto de Ortodoncia">Arrancar Proyecto de Ortodoncia (500 pts)</option>
-                    <option value="Limpiar las cacas / arenero">Limpiar las cacas / arenero (200 pts)</option>
-                    <option value="Lavar los baños">Lavar los baños (300 pts)</option>
-                    <option value="Hacer la comida">Hacer la comida (300 pts)</option>
-                    <option value="Calentar la comida">Calentar la comida (100 pts)</option>
-                    <option value="Lavar los platos">Lavar los platos (200 pts)</option>
-                    <option value="Doblar la ropa dentro de los clósets">Doblar la ropa dentro de los clósets (140 pts)</option>
-                    <option value="Sacar la ropa de la lavadora">Sacar la ropa de la lavadora (120 pts)</option>
-                    <option value="Echar ropa a la lavadora">Echar ropa a la lavadora (110 pts)</option>
-                    <option value="Botar la basura">Botar la basura (100 pts)</option>
-                    <option value="Hacer Mandados Tienda o Droguería">Hacer Mandados Tienda o Droguería (90 pts)</option>
-                    <option value="Tirar la Basura al Shut de Basuras">Tirar la Basura al Shut de Basuras (90 pts)</option>
-                    <option value="Lavar la nevera">Lavar la nevera (90 pts)</option>
-                    <option value="Trapear la sala">Trapear la sala (80 pts)</option>
-                    <option value="Trapear las habitaciones">Trapear las habitaciones (80 pts)</option>
-                    <option value="Colgar la ropa a secar">Colgar la ropa a secar (70 pts)</option>
-                    <option value="Barrer la sala">Barrer la sala (60 pts)</option>
-                    <option value="Barrer las habitaciones">Barrer las habitaciones (60 pts)</option>
-                    <option value="Limpiar los espejos">Limpiar los espejos (50 pts)</option>
-                    <option value="Limpiar el polvo de muebles">Limpiar el polvo de muebles (50 pts)</option>
-                    <option value="Tender la cama">Tender la cama (40 pts)</option>
-                </select>
-            </div>
-
-            <!-- Botón de Solicitud de Plata Directa -->
-            <div class="pt-2">
-                <button onclick="openMoneyModal()" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 rounded-lg transition shadow-lg text-sm flex items-center justify-center gap-2">
-                    💰 Solicitar Plata
-                </button>
-            </div>
-
-            <!-- Paso 1: Foto Inicial -->
-            <div id="step-1" class="space-y-3 pt-2">
-                <label class="block text-sm font-medium text-amber-300">📸 Paso 1: Foto ANTES de empezar</label>
-                <input type="file" id="before_photo" accept="image/*" capture="environment" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-500 file:text-slate-900 hover:file:bg-amber-600">
-                <button onclick="startTask()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-3 rounded-lg transition shadow-lg">Iniciar Tarea</button>
-            </div>
-
-            <!-- Paso 2: Foto Final -->
-            <div id="step-2" class="space-y-3 pt-2 hidden">
-                <div class="p-3 bg-slate-900 rounded-lg border border-amber-500/30 text-sm text-amber-300 text-center">
-                    ⏱️ Tarea en curso... Realiza la labor y toma la foto final.
-                </div>
-                <label class="block text-sm font-medium text-amber-300">🏁 Paso 2: Foto DESPUÉS de terminar</label>
-                <input type="file" id="after_photo" accept="image/*" capture="environment" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-500 file:text-slate-900 hover:file:bg-emerald-600">
-                <button id="btn-finish-task" onclick="finishTask()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold py-3 rounded-lg transition shadow-lg">Finalizar y Calificar con IA</button>
-            </div>
-
-            <!-- Indicador Visual de Carga / Progreso -->
-            <div id="loading-box" class="hidden mt-6 p-5 bg-slate-900 rounded-xl border border-amber-500/40 text-center space-y-4 shadow-lg">
-                <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-amber-500 border-t-transparent"></div>
-                <div class="space-y-1">
-                    <p id="loading-status-text" class="font-bold text-amber-400 text-sm">Procesando evidencias...</p>
-                    <p class="text-xs text-slate-400">Por favor no cierres la ventana mientras la IA evalúa tu esfuerzo.</p>
-                </div>
-                <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                    <div id="progress-bar" class="bg-amber-500 h-2.5 rounded-full transition-all duration-500 w-1/3"></div>
-                </div>
-            </div>
-
-            <!-- Resultado de la IA -->
-            <div id="result-box" class="hidden mt-6 p-4 bg-slate-900 rounded-xl border border-slate-700 space-y-2">
-                <h3 class="font-bold text-amber-400 text-lg">⚖️ Veredicto de la IA</h3>
-                <p id="res-user" class="text-sm"></p>
-                <p id="res-duration" class="text-sm"></p>
-                <p id="res-status" class="text-sm font-semibold"></p>
-                <p id="res-points" class="text-sm font-bold text-amber-300"></p>
-                <p id="res-obs" class="text-xs text-slate-300 italic bg-slate-800 p-2 rounded"></p>
-                <div class="flex gap-2 pt-2">
-                    <a id="link-before" href="#" target="_blank" class="flex-1 text-center bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded transition">Ver Inicio</a>
-                    <a id="link-after" href="#" target="_blank" class="flex-1 text-center bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded transition">Ver Final</a>
-                </div>
-                <button onclick="resetApp()" class="w-full mt-2 bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded transition">Hacer otra tarea</button>
-            </div>
-        </div>		
-
-        <!-- Sección Podio Real -->
-        <div id="section-podium" class="space-y-4">
-            <div class="flex justify-center gap-2 mb-4">
-                <button onclick="loadLeaderboard('hoy')" id="p-hoy" class="px-3 py-1 bg-slate-700 text-slate-300 text-xs rounded-full">Hoy</button>
-                <button onclick="loadLeaderboard('semana')" id="p-semana" class="px-3 py-1 bg-amber-500 text-slate-900 font-bold text-xs rounded-full shadow">Esta Semana</button>
-                <button onclick="loadLeaderboard('mes')" id="p-mes" class="px-3 py-1 bg-slate-700 text-slate-300 text-xs rounded-full">Este Mes</button>
-            </div>
-
-            <!-- Tarjeta de Reto Grupal con Mensaje Explicativo -->
-            <div id="group-challenge-card" class="bg-gradient-to-r from-amber-500/10 to-slate-900 border border-amber-500/40 rounded-2xl p-4 space-y-2 mb-4 shadow-md">
-                <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">🤝 Reto Grupal Semanal</span>
-                    <span id="group-challenge-points" class="text-xs font-extrabold text-amber-300">0 / 12,000 pts</span>
-                </div>
-                <!-- Barra de Progreso Grupal -->
-                <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-                    <div id="group-progress-bar" class="bg-amber-500 h-2 rounded-full transition-all duration-500" style="width: 0%;"></div>
-                </div>
-                <p class="text-[11px] text-slate-300 leading-tight">
-                    💡 <strong class="text-amber-300">¿Qué pasa si lo logramos?</strong> Al alcanzar la meta conjunta de la familia antes de finalizar la semana, <span class="text-amber-200">se desbloquea una recompensa en equipo</span> (como una salida especial o una cena en conjunto).
-                </p>
-            </div>
-
-            <div id="podium-content" class="space-y-3">
-                <!-- Se renderiza por JavaScript -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Detalle de Tareas del Usuario -->
-    <div id="modal-detalle" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-700 w-full max-w-lg rounded-2xl p-5 shadow-2xl max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center mb-3 border-b border-slate-700 pb-3">
-                <h2 id="modal-title" class="text-lg font-bold text-amber-400">Detalle de Tareas</h2>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
-            </div>
+        if not github_token:
+            print("⚠️ Falta configurar GITHUB_TOKEN en Render")
+            return "#"
             
-            <div class="mb-3">
-                <input type="text" id="filter-tasks" oninput="filterUserTasks()" placeholder="🔍 Buscar por nombre de tarea..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
-            </div>
+        encoded_content = base64.b64encode(photo_bytes).decode("utf-8")
+        url = f"https://api.github.com/repos/{repo_name}/contents/evidencias/{filename}"
+        
+        headers = {
+            "Authorization": f"Bearer {github_token}",
+            "Accept": "application/vnd.github+json"
+        }
+        data = {
+            "message": f"Evidencia automática {filename}",
+            "content": encoded_content,
+            "branch": "main"
+        }
+        
+        response = requests.put(url, headers=headers, json=data)
+        if response.status_code in [201, 200]:
+            return f"https://raw.githubusercontent.com/{repo_name}/main/evidencias/{filename}"
+        else:
+            print(f"❌ Error subiendo a GitHub: {response.text}")
+            return "#"
+    except Exception as e:
+        print(f"❌ Excepción subiendo a GitHub: {e}")
+        return "#"
 
-            <div id="modal-body" class="overflow-y-auto space-y-4 pr-1 flex-1">
-                <!-- Tarjetas de tareas individuales -->
-            </div>
-            <button onclick="closeModal()" class="mt-4 w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium py-2.5 rounded-xl text-sm transition">Cerrar</button>
-        </div>
-    </div>
+def guardar_en_sheet(fila):
+    try:
+        creds = get_google_credentials()
+        gc = gspread.authorize(creds)
+        sh = gc.open(SHEET_NAME)
+        sh.sheet1.append_row(fila)
+        print("✅ Registro guardado en Sheets con éxito.")
+    except Exception as e:
+        print(f"❌ Error al guardar en Sheets: {e}")
 
-    <!-- Modal de Solicitar Plata (Ingreso de Monto) -->
-    <div id="modal-money" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-                <h2 class="text-lg font-bold text-cyan-400">💰 Solicitar Plata</h2>
-                <button onclick="closeMoneyModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
-            </div>
-            <div>
-                <label class="block text-xs text-slate-300 mb-1">¿Cuánto deseas solicitar?</label>
-                <input type="number" id="money-amount" placeholder="Ej: 10000" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 text-sm focus:outline-none focus:border-cyan-500">
-            </div>
-            <div id="money-response" class="hidden p-3 bg-slate-900 rounded-lg text-xs text-slate-200 border border-slate-700"></div>
-            <div class="flex gap-2 pt-2">
-                <button onclick="closeMoneyModal()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2.5 rounded-xl font-medium transition text-slate-200">Cerrar</button>
-                <button id="btn-validate-money" onclick="validateAndRequestMoney()" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white text-xs py-2.5 rounded-xl font-bold transition shadow">Solicitar</button>
-            </div>
-        </div>
-    </div>
+def obtener_puntos_semana(usuario_keyword: str) -> int:
+    try:
+        creds = get_google_credentials()
+        gc = gspread.authorize(creds)
+        sheet = gc.open(SHEET_NAME).sheet1
+        filas = sheet.get_all_values()
+        if len(filas) <= 1:
+            return 0
 
-    <!-- Modal de Confirmación -->
-    <div id="modal-money-confirm" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
-            <div class="text-3xl">❓</div>
-            <h3 class="text-lg font-bold text-cyan-400">Confirmar Solicitud</h3>
-            <div id="modal-money-confirm-details" class="text-sm text-slate-200 leading-relaxed bg-slate-900 p-3 rounded-xl border border-slate-700 space-y-1 text-left">
-                <!-- Detalle insertado dinámicamente -->
-            </div>
-            <p class="text-xs text-slate-400">¿Desea proceder con esta solicitud?</p>
-            <div class="flex gap-2 pt-2">
-                <button onclick="cancelMoneyConfirmation()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2.5 rounded-xl font-medium transition text-slate-200">Cancelar</button>
-                <button id="btn-confirm-money" onclick="executeMoneyRequest()" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white text-xs py-2.5 rounded-xl font-bold transition shadow">Aceptar</button>
-            </div>
-        </div>
-    </div>
+        now = get_colombia_now()
+        hoy_date = now.date()
+        inicio_semana_date = hoy_date - timedelta(days=hoy_date.weekday())
+        
+        total_puntos_ganados = 0
+        total_puntos_redimidos = 0
+        user_kw = usuario_keyword.lower()
 
-    <!-- Modal Secundario: Solicitud Cancelada -->
-    <div id="modal-money-cancel" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
-            <div class="text-3xl">ℹ️</div>
-            <h3 class="text-base font-bold text-slate-200">Solicitud Cancelada</h3>
-            <p class="text-sm text-slate-300 leading-relaxed">Usted ha cancelado su solicitud de dinero</p>
-            <button onclick="closeMoneyCancelModal()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 font-bold py-2.5 rounded-xl transition shadow text-xs">
-                Aceptar
-            </button>
-        </div>
-    </div>
+        for fila in filas[1:]:
+            if len(fila) < 6:
+                continue
+            fecha_str = str(fila[0]).strip()
+            usuario_val = str(fila[1]).strip().lower()
+            completado_val = str(fila[4]).strip().lower()
+            puntos_str = str(fila[5]).strip()
+            puntos_redimidos_str = str(fila[10]).strip() if len(fila) > 10 else "0"
+            estado_val = str(fila[11]).strip().lower() if len(fila) > 11 else ""
 
-    <!-- Modal Secundario: Solicitud Exitosa / Aprobada -->
-    <div id="modal-money-success" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-emerald-500/40 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
-            <div class="text-3xl">🎉</div>
-            <h3 class="text-base font-bold text-emerald-400">Solicitud Enviada</h3>
-            <p id="modal-money-success-text" class="text-sm text-slate-200 font-medium leading-relaxed">
-                ¡Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero
-            </p>
-            <button onclick="closeMoneySuccessModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition shadow text-xs">
-                Aceptar
-            </button>
-        </div>
-    </div>
+            if estado_val == "rechazado":
+                continue
 
-    <script>
-        let startTime = null;
-        let globalPeriodo = 'semana';
-        let allUserTasks = [];
-        let pendingMoneyRequest = null;
+            if completado_val not in ["sí", "si", "true", "1", "yes"]:
+                continue
 
-        function switchTab(tab, periodo = 'semana') {
-            if(tab === 'task') {
-                document.getElementById('section-task').classList.remove('hidden');
-                document.getElementById('section-podium').classList.add('hidden');
-                document.getElementById('btn-task').className = "flex-1 py-2 rounded-md font-medium text-sm transition bg-amber-500 text-slate-900 shadow";
-                document.getElementById('btn-podium').className = "flex-1 py-2 rounded-md font-medium text-sm transition text-slate-300";
-            } else {
-                document.getElementById('section-task').classList.add('hidden');
-                document.getElementById('section-podium').classList.remove('hidden');
-                document.getElementById('btn-podium').className = "flex-1 py-2 rounded-md font-medium text-sm transition bg-amber-500 text-slate-900 shadow";
-                document.getElementById('btn-task').className = "flex-1 py-2 rounded-md font-medium text-sm transition text-slate-300";
-                globalPeriodo = periodo;
-                loadLeaderboard(periodo);
+            matched = False
+            if "val" in user_kw and "val" in usuario_val:
+                matched = True
+            elif ("gab" in user_kw or "gabi" in user_kw) and "gab" in usuario_val:
+                matched = True
+            elif ("jaiv" in user_kw) and ("jaiv" in usuario_val or "martinez" in usuario_val):
+                matched = True
+            elif ("eli" in user_kw or "parra" in user_kw) and ("eli" in usuario_val or "parra" in usuario_val):
+                matched = True
+
+            if not matched:
+                continue
+
+            try:
+                fila_date = datetime.strptime(fecha_str[:10], "%Y-%m-%d").date()
+            except ValueError:
+                continue
+
+            if fila_date >= inicio_semana_date:
+                try:
+                    pts = int(float(puntos_str))
+                    if pts > 0:
+                        total_puntos_ganados += pts
+                    elif pts < 0:
+                        total_puntos_redimidos += abs(pts)
+                except ValueError:
+                    pass
+
+                try:
+                    redim = int(float(puntos_redimidos_str))
+                    if redim > 0:
+                        total_puntos_redimidos += redim
+                except ValueError:
+                    pass
+
+        return max(0, total_puntos_ganados - total_puntos_redimidos)
+    except Exception as e:
+        print(f"❌ Error al obtener puntos semanales: {e}")
+        return 0
+
+@app.get("/saludo")
+async def saludo():
+    return {
+        "proyecto": "RetoHogar",
+        "mensaje": "¡Bienvenido al proyecto RetoHogar! Tu plataforma para gamificar y organizar las tareas del hogar."
+    }
+
+@app.post("/api/validate-money-request")
+async def validate_money_request(req: MoneyRequest):
+    try:
+        user_name = req.user_name
+        requested_amount = req.amount
+        
+        if requested_amount <= 0:
+            return {
+                "status": "error",
+                "message": "Ingresa un monto en pesos ($) mayor a cero."
             }
-        }
-
-        function openMoneyModal() {
-            document.getElementById('money-amount').value = "";
-            document.getElementById('money-response').classList.add('hidden');
-            document.getElementById('modal-money').classList.remove('hidden');
-            pendingMoneyRequest = null;
-        }
-
-        function closeMoneyModal() {
-            document.getElementById('modal-money').classList.add('hidden');
-        }
-
-        async function validateAndRequestMoney() {
-            const userName = document.getElementById('user_name').value;
-            const amountVal = document.getElementById('money-amount').value;
-            const responseBox = document.getElementById('money-response');
-            const validateBtn = document.getElementById('btn-validate-money');
-
-            if(!amountVal || parseFloat(amountVal) <= 0) {
-                responseBox.classList.remove('hidden');
-                responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Error:</span> Por favor ingresa un monto válido mayor a cero.`;
-                return;
-            }
-
-            const amount = parseFloat(amountVal);
-            responseBox.classList.remove('hidden');
-            responseBox.innerText = "⏳ Verificando saldo de puntos...";
-            if(validateBtn) validateBtn.disabled = true;
-
-            try {
-                const res = await fetch('/api/validate-money-request', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_name: userName, amount: amount })
-                });
-                const data = await res.json();
-
-                if(validateBtn) validateBtn.disabled = false;
-
-                if(data.status === "success") {
-                    pendingMoneyRequest = {
-                        userName: userName,
-                        amount: amount,
-                        ptsToDeduct: data.puntos_a_descontar
-                    };
-                    closeMoneyModal();
-                    
-                    const detailsHtml = `<div>👤 <strong>Usuario:</strong> ${userName}</div>` +
-                                        `<div>💰 <strong>Monto:</strong> $${amount.toLocaleString()} COP</div>` +
-                                        `<div>⭐ <strong>Puntos a descontar:</strong> ${data.puntos_a_descontar} pts</div>`;
-                    document.getElementById('modal-money-confirm-details').innerHTML = detailsHtml;
-                    document.getElementById('modal-money-confirm').classList.remove('hidden');
-                } else {
-                    responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Rechazado:</span> ${data.message}`;
-                }
-            } catch(e) {
-                if(validateBtn) validateBtn.disabled = false;
-                let errText = "No se pudo verificar la solicitud.";
-                if (e instanceof TypeError || (e.message && e.message.includes('Failed to fetch'))) {
-                    errText = "Error de conexión (Failed to fetch). Verifica tu internet e intentalo de nuevo.";
-                }
-                responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Error:</span> ${errText}`;
-            }
-        }
-
-        function cancelMoneyConfirmation() {
-            pendingMoneyRequest = null;
-            document.getElementById('modal-money-confirm').classList.add('hidden');
-            document.getElementById('modal-money-cancel').classList.remove('hidden');
-        }
-
-        function closeMoneyCancelModal() {
-            document.getElementById('modal-money-cancel').classList.add('hidden');
-        }
-
-        function closeMoneySuccessModal() {
-            document.getElementById('modal-money-success').classList.add('hidden');
-            if(!document.getElementById('section-podium').classList.contains('hidden')) {
-                loadLeaderboard(globalPeriodo);
-            }
-        }
-
-        async function executeMoneyRequest() {
-            if(!pendingMoneyRequest) return;
             
-            const confirmBtn = document.getElementById('btn-confirm-money');
-            if(confirmBtn) confirmBtn.disabled = true;
+        puntos_actuales = obtener_puntos_semana(user_name)
+        puntos_a_descontar = int((requested_amount / 20000.0) * 1000.0)
+        
+        if puntos_a_descontar <= 0:
+            return {
+                "status": "error",
+                "message": f"No tienes suficientes puntos acumulados esta semana (Tienes {puntos_actuales} pts disponibles, mínimo 1000 pts requeridos)."
+            }
+            
+        if puntos_actuales < puntos_a_descontar:
+            return {
+                "status": "error",
+                "message": f"No tienes suficientes puntos acumulados esta semana (Tienes {puntos_actuales} pts, requieres {puntos_a_descontar} pts para ${requested_amount:,.0f} COP)."
+            }
+            
+        return {
+            "status": "success",
+            "message": "Solicitud viable.",
+            "puntos_a_descontar": puntos_a_descontar,
+            "puntos_actuales": puntos_actuales
+        }
+    except Exception as e:
+        print(f"❌ Error validando solicitud de dinero: {e}")
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
 
-            try {
-                const res = await fetch('/api/request-money', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        user_name: pendingMoneyRequest.userName,
-                        amount: pendingMoneyRequest.amount
+@app.post("/api/request-money")
+async def request_money(req: MoneyRequest):
+    try:
+        user_name = req.user_name
+        requested_amount = req.amount
+        
+        if requested_amount <= 0:
+            return {
+                "status": "error",
+                "message": "Ingresa un monto en pesos ($) mayor a cero."
+            }
+            
+        puntos_actuales = obtener_puntos_semana(user_name)
+        puntos_a_descontar = int((requested_amount / 20000.0) * 1000.0)
+        
+        if puntos_actuales < puntos_a_descontar:
+            return {
+                "status": "error",
+                "message": "No tienes suficientes puntos acumulados esta semana."
+            }
+            
+        now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        guardar_en_sheet([
+            now_colombia,
+            user_name,
+            "Solicitud de Dinero Web",
+            0,
+            "Sí",
+            0,
+            0,
+            f"Solicitud web de ${requested_amount:,.0f} COP pendiente de aprobación. ({puntos_a_descontar} pts)",
+            "#",
+            "#",
+            0,
+            "Pendiente"
+        ])
+        
+        asunto_correo = f"💰 Nueva Solicitud de Dinero Pendiente - {user_name}"
+        cuerpo_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #0284c7;">Nueva Solicitud de Dinero en Reto del Hogar</h2>
+            <p>Se ha registrado una nueva solicitud que requiere tu aprobación:</p>
+            <ul>
+                <li><strong>Solicitante:</strong> {user_name}</li>
+                <li><strong>Monto:</strong> ${requested_amount:,.0f} COP</li>
+                <li><strong>Puntos equivalentes:</strong> {puntos_a_descontar} pts</li>
+                <li><strong>Fecha:</strong> {now_colombia}</li>
+            </ul>
+            <p>Por favor ingresa al panel de administración para aprobar o rechazar la solicitud.</p>
+        </body>
+        </html>
+        """
+        enviar_correo_smtp(asunto_correo, cuerpo_html)
+        
+        return {
+            "status": "success",
+            "message": "¡Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero",
+            "puntos_descontados": 0,
+            "saldo_restante": puntos_actuales
+        }
+    except Exception as e:
+        print(f"❌ Error procesando solicitud de dinero: {e}")
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
+@app.get("/admin/login")
+async def admin_login_get(response: Response):
+    resp = RedirectResponse(url="/admin/solicitudes", status_code=303)
+    resp.set_cookie(key="admin_user", value="Jaiver Martínez", httponly=True)
+    return resp
+
+@app.get("/admin/solicitudes", response_class=HTMLResponse)
+async def admin_solicitudes_view(request: Request, admin_user: str = Cookie(None)):
+    if not admin_user or "jaiv" not in admin_user.lower():
+        return HTMLResponse("<h3>Acceso denegado. Este panel es exclusivo para el administrador Jaiver Martínez.</h3><p><a href='/admin/login'>Iniciar sesión como Administrador</a></p>", status_code=403)
+
+    try:
+        creds = get_google_credentials()
+        gc = gspread.authorize(creds)
+        sheet = gc.open(SHEET_NAME).sheet1
+        filas = sheet.get_all_values()
+        
+        solicitudes_pendientes = []
+        if len(filas) > 1:
+            for idx, fila in enumerate(filas[1:], start=2):
+                if len(fila) >= 12 and "solicitud de dinero" in str(fila[2]).lower() and str(fila[11]).strip().lower() == "pendiente":
+                    solicitudes_pendientes.append({
+                        "row_index": idx,
+                        "fecha": fila[0],
+                        "usuario": fila[1],
+                        "detalle": fila[7],
+                        "puntos": fila[10] if len(fila) > 10 else "0"
                     })
-                });
-                const data = await res.json();
-                
-                if(confirmBtn) confirmBtn.disabled = false;
-                document.getElementById('modal-money-confirm').classList.add('hidden');
+    except Exception as e:
+        print(f"Error cargando solicitudes pendientes: {e}")
+        solicitudes_pendientes = []
 
-                if(data.status === "success") {
-                    const msgText = data.message || "¡Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero";
-                    document.getElementById('modal-money-success-text').innerText = msgText;
-                    document.getElementById('modal-money-success').classList.remove('hidden');
-                } else {
-                    alert("Error al procesar la solicitud: " + data.message);
-                }
-            } catch(e) {
-                if(confirmBtn) confirmBtn.disabled = false;
-                alert("Error de conexión al procesar la solicitud.");
-            } finally {
-                pendingMoneyRequest = null;
-            }
-        }
-
-        function startTask() {
-            const photoInput = document.getElementById('before_photo');
-
-            if(photoInput.files.length === 0) {
-                alert("Por favor toma o selecciona la foto inicial.");
-                return;
-            }
-
-            startTime = new Date();
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Panel de Administración - Reto del Hogar</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-slate-900 text-slate-100 min-h-screen p-6">
+        <div class="max-w-4xl mx-auto space-y-6">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-4">
+                <h1 class="text-2xl font-bold text-amber-400">🛡️ Panel de Administración - Aprobación de Solicitudes</h1>
+                <a href="/" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-xs">Volver al Inicio</a>
+            </div>
             
-            document.getElementById('step-1').classList.add('hidden');
-            document.getElementById('step-2').classList.remove('hidden');
-        }
+            <div class="bg-slate-800 rounded-2xl p-5 border border-slate-700 shadow-xl space-y-4">
+                <h2 class="text-lg font-bold text-cyan-400">Solitudes de Dinero Pendientes</h2>
+    """
 
-        async function finishTask() {
-            const photoBefore = document.getElementById('before_photo');
-            const photoAfter = document.getElementById('after_photo');
-            
-            if(photoAfter.files.length === 0) {
-                alert("Por favor toma o selecciona la foto final.");
-                return;
-            }
-
-            const finishBtn = document.getElementById('btn-finish-task');
-            if (finishBtn) finishBtn.disabled = true;
-            document.getElementById('step-2').classList.add('hidden');
-            
-            const loadingBox = document.getElementById('loading-box');
-            const statusText = document.getElementById('loading-status-text');
-            const progressBar = document.getElementById('progress-bar');
-            loadingBox.classList.remove('hidden');
-
-            const endTime = new Date();
-            const durationMinutes = Math.max(1, Math.round((endTime - startTime) / 60000));
-
-            let finalBeforePhoto = photoBefore.files[0];
-            let finalAfterPhoto = photoAfter.files[0];
-
-            const compOptions = {
-                maxSizeMB: 1,
-                maxWidthOrHeight: 1280,
-                useWebWorker: true
-            };
-
-            try {
-                statusText.innerText = "Comprimiendo fotos para optimizar espacio...";
-                progressBar.style.width = "40%";
-                finalBeforePhoto = await imageCompression(photoBefore.files[0], compOptions);
-                finalAfterPhoto = await imageCompression(photoAfter.files[0], compOptions);
-            } catch (error) {
-                console.error("Error en compresión, usando originales", error);
-            }
-
-            statusText.innerText = "Subiendo evidencias y analizando con IA...";
-            progressBar.style.width = "80%";
-
-            const formData = new FormData();
-            formData.append("user_name", document.getElementById('user_name').value);
-            formData.append("task_name", document.getElementById('task_name').value);
-            formData.append("duration_minutes", durationMinutes);
-            formData.append("before_photo", finalBeforePhoto);
-            formData.append("after_photo", finalAfterPhoto);
-
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 90000);
-
-            try {
-                const res = await fetch('/api/evaluate-task', { 
-                    method: 'POST', 
-                    body: formData, 
-                    signal: controller.signal 
-                });
-                clearTimeout(timeoutId);
-
-                if (!res.ok) {
-                    throw new Error(`Servidor respondió con código ${res.status}`);
-                }
-
-                const data = await res.json();
-                
-                if(data.status === "success") {
-                    progressBar.style.width = "100%";
-                    setTimeout(() => {
-                        loadingBox.classList.add('hidden');
-                        document.getElementById('result-box').classList.remove('hidden');
-
-                        document.getElementById('res-user').innerText = `👤 Responsable: ${data.user_name}`;
-                        document.getElementById('res-duration').innerText = `⏱️ Duración: ${data.duration_minutes} min`;
-                        document.getElementById('res-status').innerText = `✅ Completado: Sí`;
-                        document.getElementById('res-points').innerText = `⭐ Puntos obtenidos: +${data.puntos}`;
-                        document.getElementById('res-obs').innerText = `📝 Observaciones: ${data.observaciones}`;
-                        
-                        document.getElementById('link-before').href = data.before_url;
-                        document.getElementById('link-after').href = data.after_url;
-                    }, 400);
-                } else {
-                    loadingBox.classList.add('hidden');
-                    document.getElementById('step-2').classList.remove('hidden');
-                    if (finishBtn) finishBtn.disabled = false;
-                    alert("Error al finalizar la tarea: " + (data.message || "Desconocido"));
-                }
-            } catch(e) {
-                clearTimeout(timeoutId);
-                loadingBox.classList.add('hidden');
-                document.getElementById('step-2').classList.remove('hidden');
-                if (finishBtn) finishBtn.disabled = false;
-
-                if (e.name === 'AbortError') {
-                    alert("⏱️ Tiempo de espera agotado: El servidor o el modelo de IA tardaron demasiado en responder. Por favor reintenta la evaluación.");
-                } else if (e instanceof TypeError || (e.message && e.message.includes('Failed to fetch'))) {
-                    alert("📡 Error de red o conexión (Failed to fetch): No se pudo completar la solicitud. Verifica tu conexión a internet o la disponibilidad del servidor y vuelve a intentarlo.");
-                } else {
-                    alert("❌ Error en la evaluación: " + (e.message || e));
-                }
-            }
-        }
-
-        function resetApp() {
-            startTime = null;
-            document.getElementById('result-box').classList.add('hidden');
-            document.getElementById('loading-box').classList.add('hidden');
-            document.getElementById('step-2').classList.add('hidden');
-            document.getElementById('step-1').classList.remove('hidden');
-            document.getElementById('before_photo').value = "";
-            document.getElementById('after_photo').value = "";
-            const btn1 = document.querySelector('#step-1 button');
-            if(btn1) {
-                btn1.innerText = "Iniciar Tarea";
-                btn1.disabled = false;
-            }
-            const btn2 = document.getElementById('btn-finish-task');
-            if(btn2) {
-                btn2.innerText = "Finalizar y Calificar con IA";
-                btn2.disabled = false;
-            }
-            document.getElementById('progress-bar').style.width = "33%";
-        }
-
-        async function loadLeaderboard(periodo) {
-            globalPeriodo = periodo;
-            ['hoy', 'semana', 'mes'].forEach(p => {
-                const b = document.getElementById('p-' + p);
-                if(p === periodo) {
-                    b.className = "px-3 py-1 bg-amber-500 text-slate-900 font-bold text-xs rounded-full shadow";
-                } else {
-                    b.className = "px-3 py-1 bg-slate-700 text-slate-300 text-xs rounded-full";
-                }
-            });
-
-            const groupCard = document.getElementById('group-challenge-card');
-            if(periodo === 'hoy') {
-                groupCard.style.display = 'none';
-            } else {
-                groupCard.style.display = 'block';
-            }
-
-            try {
-                const res = await fetch(`/api/leaderboard?periodo=${periodo}`);
-                if (!res.ok) throw new Error("Error de respuesta del servidor");
-                const data = await res.json();
-                
-                const sorted = Object.entries(data).sort((a,b) => b[1].puntos - a[1].puntos);
-                
-                let totalGroupPoints = 0;
-                Object.values(data).forEach(info => {
-                    totalGroupPoints += info.puntos;
-                });
-
-                const targetGoal = periodo === 'mes' ? 48000 : 12000;
-                const percentage = Math.min(100, Math.round((totalGroupPoints / targetGoal) * 100));
-
-                document.getElementById('group-challenge-points').innerText = `${totalGroupPoints.toLocaleString()} / ${targetGoal.toLocaleString()} pts (${percentage}%)`;
-                document.getElementById('group-progress-bar').style.width = `${percentage}%`;
-
-                let html = "";
-                
-                if(sorted.length > 0) {
-                    const first = sorted[0];
-                    const second = sorted.length > 1 ? sorted[1] : null;
-                    const third = sorted.length > 2 ? sorted[2] : null;
-                    const rest = sorted.slice(3);
-
-                    html += `
-                        <div onclick="openDetail('${first[0]}')" class="bg-gradient-to-b from-amber-500/20 to-slate-900 border-2 border-amber-500 rounded-2xl p-4 text-center shadow-lg relative overflow-hidden mb-3 cursor-pointer hover:border-amber-400 transition">
-                            <div class="absolute top-2 right-3 text-2xl">👑</div>
-                            <span class="text-3xl">🥇</span>
-                            <h2 class="text-lg font-extrabold text-amber-400 mt-1">${first[0]}</h2>
-                            <p class="text-xs text-slate-300 mb-2">${first[1].tareas} tareas completadas</p>
-                            <div class="inline-block bg-amber-500 text-slate-900 font-black px-4 py-1 rounded-full text-sm shadow">
-                                ${first[1].puntos} pts
-                            </div>
-                            <p class="text-[10px] text-amber-300/70 mt-2 underline">Toca para ver desglose de tareas</p>
-                        </div>
-                    `;
-
-                    if(second || third) {
-                        html += `<div class="grid grid-cols-2 gap-2 mb-3">`;
-                        
-                        if(second) {
-                            html += `
-                                <div onclick="openDetail('${second[0]}')" class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-center cursor-pointer hover:border-slate-500 transition">
-                                    <span class="text-2xl">🥈</span>
-                                    <p class="font-bold text-sm text-slate-200 truncate mt-1">${second[0]}</p>
-                                    <p class="text-[10px] text-slate-400">${second[1].tareas} tareas</p>
-                                    <p class="text-amber-300 font-extrabold text-sm mt-1">${second[1].puntos} pts</p>
-                                    <p class="text-[9px] text-slate-400 mt-1 underline">Ver tareas</p>
-                                </div>
-                            `;
-                        }
-                        
-                        if(third) {
-                            html += `
-                                <div onclick="openDetail('${third[0]}')" class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-center cursor-pointer hover:border-slate-500 transition">
-                                    <span class="text-2xl">🥉</span>
-                                    <p class="font-bold text-sm text-slate-200 truncate mt-1">${third[0]}</p>
-                                    <p class="text-[10px] text-slate-400">${third[1].tareas} tareas</p>
-                                    <p class="text-amber-300 font-extrabold text-sm mt-1">${third[1].puntos} pts</p>
-                                    <p class="text-[9px] text-slate-400 mt-1 underline">Ver tareas</p>
-                                </div>
-                            `;
-                        }
-                        
-                        html += `</div>`;
-                    }
-
-                    rest.forEach(([name, info], index) => {
-                        let rank = index + 4;
-                        html += `
-                            <div onclick="openDetail('${name}')" class="flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-800 text-sm cursor-pointer hover:border-slate-600 transition">
-                                <div class="flex items-center gap-2">
-                                    <span class="font-bold text-slate-400 text-xs">#${rank}</span>
-                                    <span class="font-semibold text-slate-300">${name}</span>
-                                </div>
-                                <div class="text-right">
-                                    <span class="font-bold text-amber-400">${info.puntos} pts</span>
-                                </div>
-                            </div>
-                        `;
-                    });
-                }
-
-                document.getElementById('podium-content').innerHTML = html;
-            } catch(e) {
-                console.error("Error cargando podio:", e);
-                document.getElementById('podium-content').innerHTML = `<p class="text-center text-red-400 text-xs py-4">📡 Error al cargar la clasificación. Revisa tu conexión.</p>`;
-            }
-        }
-
-        async function openDetail(userName) {
-            document.getElementById('modal-title').innerText = `Tareas de ${userName}`;
-            document.getElementById('filter-tasks').value = "";
-            document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">Cargando tareas...</p>`;
-            document.getElementById('modal-detalle').classList.remove('hidden');
-
-            try {
-                const res = await fetch(`/api/user-tasks?user=${encodeURIComponent(userName)}&periodo=${globalPeriodo}`);
-                
-                if (!res.ok) {
-                    throw new Error("Error en el servidor al obtener las tareas.");
-                }
-
-                allUserTasks = await res.json();
-
-                if(!Array.isArray(allUserTasks) || allUserTasks.length === 0) {
-                    document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">No hay tareas registradas en este período.</p>`;
-                    return;
-                }
-
-                renderTaskList(allUserTasks);
-            } catch(e) {
-                console.error(e);
-                document.getElementById('modal-body').innerHTML = `<p class="text-center text-red-400 py-4">Error de conexión al cargar el detalle de tareas.</p>`;
-            }
-        }
-
-        function renderTaskList(tasks) {
-            let html = "";
-            tasks.forEach((t) => {
-                html += `
-                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-3.5 space-y-2 text-xs">
-                        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                            <span class="font-bold text-amber-400 text-sm">${t.task_name}</span>
-                            <span class="bg-amber-500/10 text-amber-300 font-semibold px-2 py-0.5 rounded">${t.puntos} pts</span>
-                        </div>
-                        <div class="text-slate-400 flex justify-between">
-                            <span>📅 ${t.fecha}</span>
-                            <span>⏱️ ${t.duracion} min</span>
-                        </div>
-                        <div class="bg-slate-800/60 p-2 rounded space-y-1">
-                            <span class="text-amber-300 font-semibold block">📝 Observaciones:</span>
-                            <p class="text-slate-300 italic">${t.observaciones || 'Sin observaciones'}</p>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 pt-1">
-                            <a href="${t.before_url}" target="_blank" class="block text-center bg-slate-800 hover:bg-slate-700 text-amber-300 py-2 rounded-lg font-medium transition border border-slate-700">📸 Ver Antes</a>
-                            <a href="${t.after_url}" target="_blank" class="block text-center bg-slate-800 hover:bg-slate-700 text-emerald-300 py-2 rounded-lg font-medium transition border border-slate-700">🏁 Ver Después</a>
-                        </div>
+    if not solicitudes_pendientes:
+        html_content += '<p class="text-slate-400 text-sm py-4">No hay solicitudes pendientes de aprobación en este momento.</p>'
+    else:
+        html_content += '<div class="space-y-3">'
+        for sol in solicitudes_pendientes:
+            html_content += f"""
+                <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <div class="font-bold text-amber-300 text-base">{sol['usuario']}</div>
+                        <div class="text-xs text-slate-300">{sol['detalle']}</div>
+                        <div class="text-[10px] text-slate-500 mt-1">📅 {sol['fecha']}</div>
                     </div>
-                `;
-            });
-            document.getElementById('modal-body').innerHTML = html;
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button onclick="procesarSolicitud({sol['row_index']}, 'aprobar')" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg text-xs transition">Aprobar</button>
+                        <button onclick="procesarSolicitud({sol['row_index']}, 'rechazar')" class="flex-1 sm:flex-none bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-lg text-xs transition">Rechazar</button>
+                    </div>
+                </div>
+            """
+        html_content += '</div>'
+
+    html_content += f"""
+            </div>
+        </div>
+        <script>
+            async function procesarSolicitud(rowIndex, action) {{
+                if(!confirm(`¿Estás seguro de que deseas ${{action}} esta solicitud?`)) return;
+                try {{
+                    const res = await fetch('/api/admin/process-money', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ row_index: rowIndex, action: action }})
+                    }});
+                    const data = await res.json();
+                    if(data.status === 'success') {{
+                        alert(data.message);
+                        location.reload();
+                    }} else {{
+                        alert('Error: ' + data.message);
+                    }}
+                }} catch(e) {{
+                    alert('Error de conexión al procesar la solicitud.');
+                }}
+            }}
+        </script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(html_content)
+
+@app.post("/api/admin/process-money")
+async def process_money_request(req: AdminActionRequest, admin_user: str = Cookie(None)):
+    if not admin_user or "jaiv" not in admin_user.lower():
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    try:
+        creds = get_google_credentials()
+        gc = gspread.authorize(creds)
+        sheet = gc.open(SHEET_NAME).sheet1
+        
+        row_idx = req.row_index
+        action = req.action.lower()
+        
+        fila = sheet.row_values(row_idx)
+        if not fila or len(fila) < 12:
+            return {"status": "error", "message": "Fila no encontrada o inválida en la hoja."}
+
+        detalle_actual = fila[7]
+        
+        if action == "aprobar":
+            puntos_a_descontar = 1000
+            try:
+                import re
+                match = re.search(r'\((\d+)\s*pts\)', detalle_actual)
+                if match:
+                    puntos_a_descontar = int(match.group(1))
+            except:
+                pass
+
+            sheet.update_cell(row_idx, 11, puntos_a_descontar)
+            sheet.update_cell(row_idx, 12, "Aprobado")
+            sheet.update_cell(row_idx, 8, detalle_actual.replace("pendiente de aprobación", "APROBADO por administrador"))
+            
+            return {"status": "success", "message": "Solicitud aprobada con éxito. Puntos descontados."}
+            
+        elif action == "rechazar":
+            sheet.update_cell(row_idx, 12, "Rechazado")
+            sheet.update_cell(row_idx, 8, detalle_actual.replace("pendiente de aprobación", "RECHAZADO por administrador"))
+            
+            return {"status": "success", "message": "Solicitud rechazada. Los puntos se mantienen intactos."}
+        else:
+            return {"status": "error", "message": "Acción no reconocida."}
+
+    except Exception as e:
+        print(f"❌ Error en process_money_request: {e}")
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/evaluate-task")
+async def evaluate_task(
+    user_name: str = Form(...),
+    task_name: str = Form(...),
+    duration_minutes: float = Form(...),
+    before_photo: UploadFile = File(...),
+    after_photo: UploadFile = File(...)
+):
+    start_time = time.time()
+    req_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"📥 [{req_time_str}] Petición recibida en /api/evaluate-task | Usuario: '{user_name}' | Tarea: '{task_name}' | Duración: {duration_minutes} min")
+    
+    primary_model = 'gemini-3.6-flash'
+    try:
+        timestamp = int(time.time())
+        
+        before_bytes = await before_photo.read()
+        after_bytes = await after_photo.read()
+        
+        before_filename = f"before_{timestamp}.jpg"
+        after_filename = f"after_{timestamp}.jpg"
+        
+        url_foto_antes = subir_foto_drive_usuario(user_name, before_filename, before_bytes)
+        url_foto_despues = subir_foto_drive_usuario(user_name, after_filename, after_bytes)
+        
+        img_before = Image.open(io.BytesIO(before_bytes))
+        img_after = Image.open(io.BytesIO(after_bytes))
+        max_score = TASK_POINTS.get(task_name, 100)
+        
+        prompt = (
+            f"Eres el juez calificador del 'Reto del Hogar'.\n"
+            f"Evalúa si la tarea '{task_name}' fue completada correctamente por '{user_name}'.\n"
+            f"Compara Foto 1 (antes) con Foto 2 (después).\n"
+            f"Puntaje máximo: {max_score}.\n"
+            f"Si las fotos no coinciden con la tarea, completado es false y puntos es 0.\n"
+            f"Devuelve strictly un JSON válido con estas llaves exactas:\n"
+            f'{{"completado": true, "puntos": {max_score}, "observaciones": "evaluación detallada de 2 frases"}}'
+        )
+
+        eval_data = {"completado": True, "puntos": max_score, "observaciones": f"[Modelo utilizado: {primary_model}] Evaluación completada correctamente."}
+        
+        try:
+            if client:
+                response = None
+                
+                print(f"🤖 [{datetime.now().strftime('%H:%M:%S')}] Intentando invocar modelo de IA principal: {primary_model}...")
+                
+                max_retries = 3
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        response = client.models.generate_content(
+                            model=primary_model,
+                            contents=[img_before, img_after, prompt],
+                            config=types.GenerateContentConfig(response_mime_type="application/json")
+                        )
+                        print(f"✅ [{datetime.now().strftime('%H:%M:%S')}] Respuesta recibida exitosamente desde {primary_model}.")
+                        break
+                    except Exception as model_err:
+                        print(f"⚠️ Intento {attempt} falló con {primary_model}: {model_err}")
+                        if attempt == max_retries:
+                            raise model_err
+                        time.sleep(2)
+
+                raw = response.text.strip()
+                if raw.startswith("```json"):
+                    raw = raw[7:-3].strip()
+                elif raw.startswith("```"):
+                    raw = raw[3:-3].strip()
+                parsed = json.loads(raw)
+                
+                eval_data["completado"] = bool(parsed.get("completado", True))
+                eval_data["puntos"] = int(parsed.get("puntos", max_score))
+                obs_texto = str(parsed.get("observaciones") or parsed.get("observacion") or "Sin observaciones detalladas.")
+                eval_data["observaciones"] = f"[Modelo utilizado: {primary_model}] {obs_texto}"
+        except Exception as e:
+            err_str = str(e).lower()
+            if "429" in err_str or "resource_exhausted" in err_str or "quota" in err_str:
+                error_msg = f"[Modelo que falló: {primary_model}] En este momento la evaluación de la IA no está disponible por falta de cuota. Estará disponible al día siguiente."
+            else:
+                error_msg = f"[Modelo que falló: {primary_model}] Error evaluando con IA: {str(e)}"
+            print(f"❌ [{datetime.now().strftime('%H:%M:%S')}] {error_msg}")
+            traceback.print_exc()
+            eval_data = {"completado": True, "puntos": max_score, "observaciones": error_msg}
+
+        now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
+        guardar_en_sheet([
+            now_colombia,
+            user_name,
+            task_name,
+            duration_minutes,
+            "Sí" if eval_data.get('completado') else "No",
+            eval_data.get('puntos', 0),
+            max_score,
+            eval_data.get('observaciones', ''),
+            url_foto_antes,
+            url_foto_despues,
+            0,
+            "Completado"
+        ])
+
+        total_duration = round(time.time() - start_time, 2)
+        print(f"⏱️ [{datetime.now().strftime('%H:%M:%S')}] Procesamiento total completado en {total_duration} segundos para /api/evaluate-task.")
+
+        return {
+            "status": "success",
+            "user_name": user_name,
+            "duration_minutes": duration_minutes,
+            "max_points": max_score,
+            "completado": eval_data.get('completado', False),
+            "puntos": eval_data.get('puntos', 0),
+            "observaciones": eval_data.get('observaciones', ''),
+            "before_url": url_foto_antes,
+            "after_url": url_foto_despues
         }
 
-        function filterUserTasks() {
-            const query = document.getElementById('filter-tasks').value.toLowerCase();
-            const filtered = allUserTasks.filter(t => 
-                t.task_name.toLowerCase().includes(query) || 
-                t.observaciones.toLowerCase().includes(query)
-            );
+    except Exception as e:
+        total_duration = round(time.time() - start_time, 2)
+        print(f"❌ [{datetime.now().strftime('%H:%M:%S')}] Error crítico en evaluate_task tras {total_duration}s: {e}")
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
 
-            if(filtered.length === 0) {
-                document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">No se encontraron tareas que coincidan con la búsqueda.</p>`;
-            } else {
-                renderTaskList(filtered);
-            }
-        }
+@app.get("/api/leaderboard")
+async def get_leaderboard(periodo: str = "hoy"):
+    totales = {
+        "Jaiver Martínez": {"puntos": 0, "tareas": 0},
+        "Gabriela Martínez": {"puntos": 0, "tareas": 0},
+        "Valeria Martínez": {"puntos": 0, "tareas": 0},
+        "Elizabeth Parra": {"puntos": 0, "tareas": 0}
+    }
+    try:
+        creds = get_google_credentials()
+        gc = gspread.authorize(creds)
+        sheet = gc.open(SHEET_NAME).sheet1
+        filas = sheet.get_all_values()
+    except Exception as e:
+        print(f"Error Sheets: {e}")
+        return totales
 
-        function closeModal() {
-            document.getElementById('modal-detalle').classList.add('hidden');
-        }
+    if len(filas) <= 1:
+        return totales
 
-        switchTab('podium', 'semana');
-    </script>
-</body>
-</html>
+    datos = filas[1:]
+    now = get_colombia_now()
+    hoy_date = now.date()
+    inicio_semana_date = hoy_date - timedelta(days=hoy_date.weekday())
+    inicio_mes_date = date(hoy_date.year, hoy_date.month, 1)
+
+    for fila in datos:
+        if len(fila) < 6:
+            continue
+        fecha_str = str(fila[0]).strip()
+        usuario_val = str(fila[1]).strip().lower()
+        task_val = str(fila[2]).strip().lower()
+        completado_val = str(fila[4]).strip().lower()
+        puntos_str = str(fila[5]).strip()
+        estado_val = str(fila[11]).strip().lower() if len(fila) > 11 else ""
+
+        if estado_val == "rechazado":
+            continue
+
+        if "solicitud de dinero" in task_val:
+            continue
+
+        if completado_val not in ["sí", "si", "true", "1", "yes"]:
+            continue
+        try:
+            fila_date = datetime.strptime(fecha_str[:10], "%Y-%m-%d").date()
+        except ValueError:
+            continue
+
+        if periodo == "hoy" and fila_date != hoy_date:
+            continue
+        elif periodo == "semana" and fila_date < inicio_semana_date:
+            continue
+        elif periodo == "mes" and fila_date < inicio_mes_date:
+            continue
+
+        try:
+            pts = int(float(puntos_str))
+            if pts < 0:
+                pts = 0
+        except ValueError:
+            pts = 0
+
+        if "gab" in usuario_val:
+            totales["Gabriela Martínez"]["puntos"] += pts
+            totales["Gabriela Martínez"]["tareas"] += 1
+        elif "val" in usuario_val:
+            totales["Valeria Martínez"]["puntos"] += pts
+            totales["Valeria Martínez"]["tareas"] += 1
+        elif "eli" in usuario_val or "parra" in usuario_val:
+            totales["Elizabeth Parra"]["puntos"] += pts
+            totales["Elizabeth Parra"]["tareas"] += 1
+        elif any(token in usuario_val for token in ["jaiv", "haib", "hyber", "jabe", "martinez", "martínez"]):
+            totales["Jaiver Martínez"]["puntos"] += pts
+            totales["Jaiver Martínez"]["tareas"] += 1
+
+    return totales
+
+@app.get("/api/cooperative-goal")
+async def get_cooperative_goal(meta_semanal: int = 12000):
+    total_puntos_semana = 0
+    try:
+        creds = get_google_credentials()
+        gc = gspread.authorize(creds)
+        sheet = gc.open(SHEET_NAME).sheet1
+        filas = sheet.get_all_values()
+        
+        if len(filas) > 1:
+            now = get_colombia_now()
+            hoy_date = now.date()
+            inicio_semana_date = hoy_date - timedelta(days=hoy_date.weekday())
+            
+            for fila in filas[1:]:
+                if len(fila) < 6:
+                    continue
+                fecha_str = str(fila[0]).strip()
+                task_val = str(fila[2]).strip().lower()
+                completado_val = str(fila[4]).strip().lower()
+                puntos_str = str(fila[5]).strip()
+                estado_val = str(fila[11]).strip().lower() if len(fila) > 11 else ""
+                
+                if estado_val == "rechazado":
+                    continue
+
+                if "solicitud de dinero" in task_val:
+                    continue
+
+                if completado_val not in ["sí", "si", "true", "1", "yes"]:
+                    continue
+                try:
+                    fila_date = datetime.strptime(fecha_str[:10], "%Y-%m-%d").date()
+                except ValueError:
+                    continue
+                
+                if fila_date >= inicio_semana_date:
+                    try:
+                        pts = int(float(puntos_str))
+                        if pts > 0:
+                            total_puntos_semana += pts
+                    except ValueError:
+                        pass
+    except Exception as e:
+        print(f"Error calculando meta grupal: {e}")
+        
+    porcentaje = min(100, int((total_puntos_semana / meta_semanal) * 100))
+    return {
+        "puntos_actuales": total_puntos_semana,
+        "meta": meta_semanal,
+        "porcentaje": porcentaje,
+        "completada": total_puntos_semana >= meta_semanal
+    }
+
+@app.get("/api/user-tasks")
+async def get_user_tasks(user: str, periodo: str = "semana"):
+    user_tasks = []
+    try:
+        creds = get_google_credentials()
+        gc = gspread.authorize(creds)
+        sheet = gc.open(SHEET_NAME).sheet1
+        filas = sheet.get_all_values()
+
+        if len(filas) <= 1:
+            return user_tasks
+
+        datos = filas[1:]
+        now = get_colombia_now()
+        hoy_date = now.date()
+        inicio_semana_date = hoy_date - timedelta(days=hoy_date.weekday())
+        inicio_mes_date = date(hoy_date.year, hoy_date.month, 1)
+
+        for fila in datos:
+            try:
+                if len(fila) < 6:
+                    continue
+                fecha_str = str(fila[0]).strip()
+                usuario_val = str(fila[1]).strip()
+                task_name = str(fila[2]).strip()
+                duracion = str(fila[3]).strip()
+                completado_val = str(fila[4]).strip().lower()
+                puntos_str = str(fila[5]).strip()
+                estado_val = str(fila[11]).strip().lower() if len(fila) > 11 else ""
+                
+                if estado_val == "rechazado":
+                    continue
+                
+                if "solicitud de dinero" in task_name.lower():
+                    continue
+
+                observaciones = str(fila[7]).strip() if len(fila) > 7 else "Sin observaciones"
+                before_url = str(fila[8]).strip() if len(fila) > 8 else "#"
+                after_url = str(fila[9]).strip() if len(fila) > 9 else "#"
+
+                if completado_val not in ["sí", "si", "true", "1", "yes"]:
+                    continue
+
+                user_lower = user.lower()
+                row_user_lower = usuario_val.lower()
+                matched = False
+                if "gab" in user_lower and "gab" in row_user_lower:
+                    matched = True
+                elif "val" in user_lower and "val" in row_user_lower:
+                    matched = True
+                elif ("eli" in user_lower or "parra" in user_lower) and ("eli" in row_user_lower or "parra" in row_user_lower):
+                    matched = True
+                elif ("jaiv" in user_lower or "hyber" in user_lower or "haib" in user_lower) and ("jaiv" in row_user_lower or "hyber" in row_user_lower or "haib" in row_user_lower or "jabe" in row_user_lower or (("gab" not in row_user_lower and "val" not in row_user_lower and "eli" not in row_user_lower and "parra" not in row_user_lower) and any(t in row_user_lower for t in ["jaiv", "martinez", "martínez"]))):
+                    matched = True
+
+                if not matched:
+                    continue
+
+                try:
+                    fila_date = datetime.strptime(fecha_str[:10], "%Y-%m-%d").date()
+                except ValueError:
+                    continue
+
+                if periodo == "hoy" and fila_date != hoy_date:
+                    continue
+                elif periodo == "semana" and fila_date < inicio_semana_date:
+                    continue
+                elif periodo == "mes" and fila_date < inicio_mes_date:
+                    continue
+
+                try:
+                    pts = int(float(puntos_str))
+                    if pts < 0:
+                        pts = 0
+                except ValueError:
+                    pts = 0
+
+                user_tasks.append({
+                    "fecha": fecha_str,
+                    "task_name": task_name,
+                    "duracion": duracion,
+                    "puntos": pts,
+                    "observaciones": observaciones if observaciones else "Sin observaciones",
+                    "before_url": before_url if before_url.startswith("http") else "#",
+                    "after_url": after_url if after_url.startswith("http") else "#"
+                })
+            except Exception as row_err:
+                print(f"Error procesando fila individual: {row_err}")
+                continue
+    except Exception as e:
+        print("❌ Error crítico en /api/user-tasks:")
+        traceback.print_exc()
+        return {"error": str(e)}
+
+    return user_tasks
+
+@app.get("/")
+async def home():
+    return FileResponse("index.html")
