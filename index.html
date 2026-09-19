@@ -93,11 +93,11 @@
             <div id="loading-box" class="hidden mt-6 p-5 bg-slate-900 rounded-xl border border-amber-500/40 text-center space-y-4 shadow-lg">
                 <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-amber-500 border-t-transparent"></div>
                 <div class="space-y-1">
-                    <p id="loading-status-text" class="font-bold text-amber-400 text-sm">Procesando evidencias...</p>
+                    <p id="loading-status-text" class="font-bold text-amber-400 text-sm">Comprimiendo evidencias...</p>
                     <p class="text-xs text-slate-400">Por favor no cierres la ventana mientras la IA evalúa tu esfuerzo.</p>
                 </div>
                 <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                    <div id="progress-bar" class="bg-amber-500 h-2.5 rounded-full transition-all duration-500 w-1/3"></div>
+                    <div id="progress-bar" class="bg-amber-500 h-2.5 rounded-full transition-all duration-500 w-1/4"></div>
                 </div>
             </div>
 
@@ -404,22 +404,22 @@
             let finalAfterPhoto = photoAfter.files[0];
 
             const compOptions = {
-                maxSizeMB: 1,
-                maxWidthOrHeight: 1280,
+                maxSizeMB: 0.25,
+                maxWidthOrHeight: 800,
                 useWebWorker: true
             };
 
             try {
-                statusText.innerText = "Comprimiendo fotos para optimizar espacio...";
-                progressBar.style.width = "40%";
+                statusText.innerText = "Comprimiendo evidencias...";
+                progressBar.style.width = "25%";
                 finalBeforePhoto = await imageCompression(photoBefore.files[0], compOptions);
                 finalAfterPhoto = await imageCompression(photoAfter.files[0], compOptions);
             } catch (error) {
                 console.error("Error en compresión, usando originales", error);
             }
 
-            statusText.innerText = "Subiendo evidencias y analizando con IA...";
-            progressBar.style.width = "80%";
+            statusText.innerText = "Analizando cambios con Gemini Flash...";
+            progressBar.style.width = "65%";
 
             const formData = new FormData();
             formData.append("user_name", document.getElementById('user_name').value);
@@ -454,13 +454,13 @@
                         document.getElementById('res-user').innerText = `👤 Responsable: ${data.user_name}`;
                         document.getElementById('res-duration').innerText = `⏱️ Duración: ${data.duration_minutes} min`;
                         document.getElementById('res-model').innerText = `🤖 Modelo utilizado: ${data.modelo_usado}`;
-                        document.getElementById('res-status').innerText = `✅ Completado: Sí`;
+                        document.getElementById('res-status').innerText = `✅ Completado: ${data.completado ? 'Sí' : 'No'}`;
                         document.getElementById('res-points').innerText = `⭐ Puntos obtenidos: +${data.puntos}`;
                         document.getElementById('res-obs').innerText = `📝 Observaciones: ${data.observaciones}`;
                         
                         document.getElementById('link-before').href = data.before_url;
                         document.getElementById('link-after').href = data.after_url;
-                    }, 400);
+                    }, 200);
                 } else {
                     loadingBox.classList.add('hidden');
                     document.getElementById('step-2').classList.remove('hidden');
@@ -501,7 +501,7 @@
                 btn2.innerText = "Finalizar y Calificar con IA";
                 btn2.disabled = false;
             }
-            document.getElementById('progress-bar').style.width = "33%";
+            document.getElementById('progress-bar').style.width = "25%";
         }
 
         async function loadLeaderboard(periodo) {
