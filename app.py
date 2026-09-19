@@ -494,7 +494,13 @@ async def evaluate_task(
     req_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"📥 [{req_time_str}] Petición recibida en /api/evaluate-task | Usuario: '{user_name}' | Tarea: '{task_name}' | Duración: {duration_minutes} min")
     
-    primary_model = 'gemini-3.6-flash'
+    models_to_try = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash']
+    max_retries_per_model = 3
+    
+    eval_data = {"completado": True, "puntos": 0, "observaciones": ""}
+    success_evaluation = False
+    used_model = None
+
     try:
         timestamp = int(time.time())
         
@@ -521,50 +527,52 @@ async def evaluate_task(
             f'{{"completado": true, "puntos": {max_score}, "observaciones": "evaluación detallada de 2 frases"}}'
         )
 
-        eval_data = {"completado": True, "puntos": max_score, "observaciones": f"[Modelo utilizado: {primary_model}] Evaluación completada correctamente."}
-        
-        try:
-            if client:
-                response = None
+        if client:
+            for model_name in models_to_try:
+                print(f"🤖 [{datetime.now().strftime('%H:%M:%S')}] Intentando modelo: {model_name}...")
+                model_success = False
                 
-                print(f"🤖 [{datetime.now().strftime('%H:%M:%S')}] Intentando invocar modelo de IA principal: {primary_model}...")
-                
-                max_retries = 3
-                for attempt in range(1, max_retries + 1):
+                for attempt in range(1, max_retries_per_model + 1):
                     try:
+                        print(f"   -> Intento {attempt}/{max_retries_per_model} con {model_name}...")
                         response = client.models.generate_content(
-                            model=primary_model,
+                            model=model_name,
                             contents=[img_before, img_after, prompt],
                             config=types.GenerateContentConfig(response_mime_type="application/json")
                         )
-                        print(f"✅ [{datetime.now().strftime('%H:%M:%S')}] Respuesta recibida exitosamente desde {primary_model}.")
+                        
+                        raw = response.text.strip()
+                        if raw.startswith("```json"):
+                            raw = raw[7:-3].strip()
+                        elif raw.startswith("```"):
+                            raw = raw[3:-3].strip()
+                        parsed = json.loads(raw)
+                        
+                        eval_data["completado"] = bool(parsed.get("completado", True))
+                        eval_data["puntos"] = int(parsed.get("puntos", max_score))
+                        obs_texto = str(parsed.get("observaciones") or parsed.get("observacion") or "Sin observaciones detalladas.")
+                        eval_data["observaciones"] = f"[Modelo exitoso: {model_name}] {obs_texto}"
+                        
+                        used_model = model_name
+                        model_success = True
+                        success_evaluation = True
+                        print(f"✅ ¡Éxito con el modelo {model_name} en el intento {attempt}!")
                         break
-                    except Exception as model_err:
-                        print(f"⚠️ Intento {attempt} falló con {primary_model}: {model_err}")
-                        if attempt == max_retries:
-                            raise model_err
-                        time.sleep(2)
+                    except Exception as attempt_err:
+                        print(f"⚠️ Falló intento {attempt} con {model_name}: {attempt_err}")
+                        if attempt < max_retries_per_model:
+                            time.sleep(1.5)
 
-                raw = response.text.strip()
-                if raw.startswith("```json"):
-                    raw = raw[7:-3].strip()
-                elif raw.startswith("```"):
-                    raw = raw[3:-3].strip()
-                parsed = json.loads(raw)
-                
-                eval_data["completado"] = bool(parsed.get("completado", True))
-                eval_data["puntos"] = int(parsed.get("puntos", max_score))
-                obs_texto = str(parsed.get("observaciones") or parsed.get("observacion") or "Sin observaciones detalladas.")
-                eval_data["observaciones"] = f"[Modelo utilizado: {primary_model}] {obs_texto}"
-        except Exception as e:
-            err_str = str(e).lower()
-            if "429" in err_str or "resource_exhausted" in err_str or "quota" in err_str:
-                error_msg = f"[Modelo que falló: {primary_model}] En este momento la evaluación de la IA no está disponible por falta de cuota. Estará disponible al día siguiente."
-            else:
-                error_msg = f"[Modelo que falló: {primary_model}] Error evaluando con IA: {str(e)}"
-            print(f"❌ [{datetime.now().strftime('%H:%M:%S')}] {error_msg}")
-            traceback.print_exc()
+                if model_success:
+                    break
+                else:
+                    print(f"❌ Se agotaron los {max_retries_per_model} intentos para {model_name}. Pasando al siguiente modelo...")
+
+        if not success_evaluation:
+            error_msg = f"[Fallo en todos los modelos: {', '.join(models_to_try)}] No se pudo completar la evaluación por IA tras agotar reintentos."
+            print(f"❌ {error_msg}")
             eval_data = {"completado": True, "puntos": max_score, "observaciones": error_msg}
+            used_model = "Ninguno (Fallo total)"
 
         now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
         guardar_en_sheet([
@@ -583,7 +591,7 @@ async def evaluate_task(
         ])
 
         total_duration = round(time.time() - start_time, 2)
-        print(f"⏱️ [{datetime.now().strftime('%H:%M:%S')}] Procesamiento total completado en {total_duration} segundos para /api/evaluate-task.")
+        print(f"⏱️ Procesamiento completado en {total_duration}s usando el modelo: {used_model}")
 
         return {
             "status": "success",
@@ -593,13 +601,14 @@ async def evaluate_task(
             "completado": eval_data.get('completado', False),
             "puntos": eval_data.get('puntos', 0),
             "observaciones": eval_data.get('observaciones', ''),
+            "modelo_usado": used_model,
             "before_url": url_foto_antes,
             "after_url": url_foto_despues
         }
 
     except Exception as e:
         total_duration = round(time.time() - start_time, 2)
-        print(f"❌ [{datetime.now().strftime('%H:%M:%S')}] Error crítico en evaluate_task tras {total_duration}s: {e}")
+        print(f"❌ Error crítico en evaluate_task tras {total_duration}s: {e}")
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
 

@@ -24,7 +24,6 @@
         <div id="section-task" class="space-y-4 hidden">
             <div>
                 <label class="block text-sm font-medium mb-1 text-slate-300">Integrante:</label>
-                <!-- Comentario técnico de edad integrado: Jaiver (49 años) Administrador y líder técnico -->
                 <select id="user_name" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-amber-500">
                     <option value="Jaiver Martínez">Jaiver Martínez (Administrador)</option>
                     <option value="Gabriela Martínez">Gabriela Martínez</option>
@@ -106,6 +105,7 @@
                 <h3 class="font-bold text-amber-400 text-lg">⚖️ Veredicto de la IA</h3>
                 <p id="res-user" class="text-sm"></p>
                 <p id="res-duration" class="text-sm"></p>
+                <p id="res-model" class="text-xs font-mono text-cyan-400"></p>
                 <p id="res-status" class="text-sm font-semibold"></p>
                 <p id="res-points" class="text-sm font-bold text-amber-300"></p>
                 <p id="res-obs" class="text-xs text-slate-300 italic bg-slate-800 p-2 rounded"></p>
@@ -452,6 +452,7 @@
 
                         document.getElementById('res-user').innerText = `👤 Responsable: ${data.user_name}`;
                         document.getElementById('res-duration').innerText = `⏱️ Duración: ${data.duration_minutes} min`;
+                        document.getElementById('res-model').innerText = `🤖 Modelo utilizado: ${data.modelo_usado}`;
                         document.getElementById('res-status').innerText = `✅ Completado: Sí`;
                         document.getElementById('res-points').innerText = `⭐ Puntos obtenidos: +${data.puntos}`;
                         document.getElementById('res-obs').innerText = `📝 Observaciones: ${data.observaciones}`;
