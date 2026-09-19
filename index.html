@@ -277,8 +277,8 @@
         async function compressImageFile(file) {
             if (!file) return null;
             const options = {
-                maxSizeMB: 0.8,
-                maxWidthOrHeight: 1280,
+                maxSizeMB: 0.25,
+                maxWidthOrHeight: 800,
                 useWebWorker: true
             };
             try {
