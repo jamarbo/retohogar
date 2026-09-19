@@ -516,7 +516,7 @@ async def evaluate_task(
     req_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"📥 [{req_time_str}] Petición recibida en /api/evaluate-task | Usuario: '{user_name}' | Tarea: '{task_name}' | Duración: {duration_minutes} min")
     
-    models_to_try = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash']
+    models_to_try = ['gemini-2.5-flash', 'gemini-1.5-flash']
     max_retries_per_model = 3
     
     eval_data = {"completado": True, "puntos": 0, "observaciones": ""}
