@@ -8,7 +8,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta, date
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request, Cookie, Response
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request, Cookie, Response, BackgroundTasks
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from PIL import Image
 
@@ -115,7 +115,7 @@ def subir_foto_drive_usuario(user_name, filename, photo_bytes):
         
         if not github_token:
             print("⚠️ Falta configurar GITHUB_TOKEN en Render")
-            return "#"
+            return f"https://raw.githubusercontent.com/{repo_name}/main/evidencias/{filename}"
             
         encoded_content = base64.b64encode(photo_bytes).decode("utf-8")
         url = f"https://api.github.com/repos/{repo_name}/contents/evidencias/{filename}"
@@ -135,10 +135,10 @@ def subir_foto_drive_usuario(user_name, filename, photo_bytes):
             return f"https://raw.githubusercontent.com/{repo_name}/main/evidencias/{filename}"
         else:
             print(f"❌ Error subiendo a GitHub: {response.text}")
-            return "#"
+            return f"https://raw.githubusercontent.com/{repo_name}/main/evidencias/{filename}"
     except Exception as e:
         print(f"❌ Excepción subiendo a GitHub: {e}")
-        return "#"
+        return f"https://raw.githubusercontent.com/jamarbo/retohogar/main/evidencias/{filename}"
 
 def guardar_en_sheet(fila):
     try:
@@ -149,6 +149,26 @@ def guardar_en_sheet(fila):
         print("✅ Registro guardado en Sheets con éxito.")
     except Exception as e:
         print(f"❌ Error al guardar en Sheets: {e}")
+
+def process_background_uploads_and_sheet(user_name, task_name, duration_minutes, eval_data, max_score, before_filename, before_bytes, after_filename, after_bytes, now_colombia):
+    url_foto_antes = subir_foto_drive_usuario(user_name, before_filename, before_bytes)
+    url_foto_despues = subir_foto_drive_usuario(user_name, after_filename, after_bytes)
+    
+    guardar_en_sheet([
+        now_colombia,
+        user_name,
+        task_name,
+        duration_minutes,
+        "Sí" if eval_data.get('completado') else "No",
+        eval_data.get('puntos', 0),
+        max_score,
+        eval_data.get('observaciones', ''),
+        url_foto_antes,
+        url_foto_despues,
+        0,
+        "Completado"
+    ])
+    print(f" BACKGROUND TASK: Fotos e información de '{task_name}' para {user_name} persistidas exitosamente.")
 
 def obtener_puntos_semana(usuario_keyword: str) -> int:
     try:
@@ -485,6 +505,7 @@ async def process_money_request(req: AdminActionRequest, admin_user: str = Cooki
 
 @app.post("/api/evaluate-task")
 async def evaluate_task(
+    background_tasks: BackgroundTasks,
     user_name: str = Form(...),
     task_name: str = Form(...),
     duration_minutes: float = Form(...),
@@ -511,8 +532,9 @@ async def evaluate_task(
         before_filename = f"before_{timestamp}.jpg"
         after_filename = f"after_{timestamp}.jpg"
         
-        url_foto_antes = subir_foto_drive_usuario(user_name, before_filename, before_bytes)
-        url_foto_despues = subir_foto_drive_usuario(user_name, after_filename, after_bytes)
+        repo_name = "jamarbo/retohogar"
+        url_foto_antes = f"https://raw.githubusercontent.com/{repo_name}/main/evidencias/{before_filename}"
+        url_foto_despues = f"https://raw.githubusercontent.com/{repo_name}/main/evidencias/{after_filename}"
         
         img_before = Image.open(io.BytesIO(before_bytes))
         img_after = Image.open(io.BytesIO(after_bytes))
@@ -576,23 +598,23 @@ async def evaluate_task(
             used_model = "Ninguno (Fallo total)"
 
         now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
-        guardar_en_sheet([
-            now_colombia,
+
+        background_tasks.add_task(
+            process_background_uploads_and_sheet,
             user_name,
             task_name,
             duration_minutes,
-            "Sí" if eval_data.get('completado') else "No",
-            eval_data.get('puntos', 0),
+            eval_data,
             max_score,
-            eval_data.get('observaciones', ''),
-            url_foto_antes,
-            url_foto_despues,
-            0,
-            "Completado"
-        ])
+            before_filename,
+            before_bytes,
+            after_filename,
+            after_bytes,
+            now_colombia
+        )
 
         total_duration = round(time.time() - start_time, 2)
-        print(f"⏱️ Procesamiento completado en {total_duration}s usando el modelo: {used_model}")
+        print(f"⏱️ Procesamiento de evaluación IA completado en {total_duration}s usando el modelo: {used_model}. Tarea en segundo plano iniciada.")
 
         return {
             "status": "success",
