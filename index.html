@@ -1,99 +1,512 @@
 <!DOCTYPE html>
-<html lang="es" class="dark" data-theme="amber">
+<html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reto del Hogar</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
-    <style>
-        :root {
-            /* Tema Claro por Defecto */
-            --theme-bg: #f8fafc;
-            --theme-card: #ffffff;
-            --theme-cardInner: #f1f5f9;
-            --theme-text: #0f172a;
-            --theme-muted: #64748b;
-            --theme-border: #e2e8f0;
-            --theme-input-bg: #ffffff;
-            --theme-tab-bg: #e2e8f0;
-        }
-
-        html.dark {
-            /* Tema Oscuro */
-            --theme-bg: #0f172a;
-            --theme-card: #1e293b;
-            --theme-cardInner: #0f172a;
-            --theme-text: #f8fafc;
-            --theme-muted: #94a3b8;
-            --theme-border: #334155;
-            --theme-input-bg: #0f172a;
-            --theme-tab-bg: #334155;
-        }
-
-        /* Paletas de Acento */
-        [data-theme="amber"] {
-            --accent-main: #f59e0b;
-            --accent-hover: #d97706;
-            --accent-text: #f59e0b;
-            --accent-subtext: #fbbf24;
-            --accent-bg-alpha: rgba(245, 158, 11, 0.15);
-            --accent-border-alpha: rgba(245, 158, 11, 0.4);
-            --accent-btn-text: #0f172a;
-        }
-
-        [data-theme="emerald"] {
-            --accent-main: #10b981;
-            --accent-hover: #059669;
-            --accent-text: #10b981;
-            --accent-subtext: #34d399;
-            --accent-bg-alpha: rgba(16, 185, 129, 0.15);
-            --accent-border-alpha: rgba(16, 185, 129, 0.4);
-            --accent-btn-text: #0f172a;
-        }
-
-        [data-theme="violet"] {
-            --accent-main: #8b5cf6;
-            --accent-hover: #7c3aed;
-            --accent-text: #8b5cf6;
-            --accent-subtext: #a78bfa;
-            --accent-bg-alpha: rgba(139, 92, 246, 0.15);
-            --accent-border-alpha: rgba(139, 92, 246, 0.4);
-            --accent-btn-text: #ffffff;
-        }
-
-        [data-theme="ocean"] {
-            --accent-main: #0284c7;
-            --accent-hover: #0369a1;
-            --accent-text: #0284c7;
-            --accent-subtext: #38bdf8;
-            --accent-bg-alpha: rgba(2, 132, 199, 0.15);
-            --accent-border-alpha: rgba(2, 132, 199, 0.4);
-            --accent-btn-text: #ffffff;
-        }
-
-        body {
-            background-color: var(--theme-bg);
-            color: var(--theme-text);
-            transition: background-color 0.2s ease, color 0.2s ease;
-        }
-
-        .bg-theme-card { background-color: var(--theme-card); }
-        .bg-theme-cardInner { background-color: var(--theme-cardInner); }
-        .bg-theme-input { background-color: var(--theme-input-bg); }
-        .bg-theme-tab { background-color: var(--theme-tab-bg); }
-        .border-theme { border-color: var(--theme-border); }
-        .text-theme-muted { color: var(--theme-muted); }
-        .text-theme-main { color: var(--theme-text); }
-
-        .bg-accent { background-color: var(--accent-main); }
-        .bg-accent-hover:hover { background-color: var(--accent-hover); }
-        .text-accent { color: var(--accent-text); }
-        .text-accent-subtext { color: var(--accent-subtext); }
-        .text-accent-btn { color: var(--accent-btn-text); }
-        .border-accent { border-color: var(--accent-main); }
-        .border-accent-alpha { border-color: var(--accent-border-alpha); }
-        .bg-accent-alpha { background-color: var(--accent-bg-alpha); }
-    </style>
 </head>
-<body class=
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-12">
+    <!-- Header / Navbar -->
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-30 shadow-lg">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">🏆</span>
+                <div>
+                    <h1 class="text-xl font-bold text-amber-400 tracking-wide">Reto del Hogar</h1>
+                    <p class="text-xs text-slate-400">Gamificación y Registro Inteligente de Tareas</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="openMoneyModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-md">
+                    <span>💰 Redimir Puntos</span>
+                </button>
+                <a href="/admin/solicitudes" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium transition border border-slate-600">
+                    ⚙️ Panel Admin
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 mt-6 space-y-8">
+        <!-- Meta Grupal / Objetivo Cooperativo -->
+        <section class="bg-slate-800 rounded-2xl p-5 border border-slate-700 shadow-xl">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-base font-bold text-amber-400 flex items-center gap-2">
+                    🎯 Meta Grupal Semanal
+                </h2>
+                <span id="goalText" class="text-xs font-semibold text-slate-300">0 / 12,000 pts</span>
+            </div>
+            <div class="w-full bg-slate-900 rounded-full h-4 overflow-hidden border border-slate-700 p-0.5">
+                <div id="goalProgressBar" class="bg-gradient-to-r from-amber-500 to-emerald-400 h-full rounded-full transition-all duration-700 w-0"></div>
+            </div>
+            <div class="mt-2 flex justify-between items-center text-[11px] text-slate-400">
+                <span id="goalPercentage">0% completado</span>
+                <span id="goalStatus">¡Puntos acumulados esta semana por todo el hogar!</span>
+            </div>
+        </section>
+
+        <!-- Formulario de Registro de Tarea -->
+        <section class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-xl space-y-5">
+            <div class="border-b border-slate-700 pb-3 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+                    📝 Registrar Nueva Tarea
+                </h2>
+                <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-full">Evaluación por IA</span>
+            </div>
+
+            <form id="taskForm" onsubmit="handleTaskSubmit(event)" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1.5">Persona Responsable</label>
+                        <select id="userSelect" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-400">
+                            <option value="">Selecciona la persona...</option>
+                            <option value="Jaiver Martínez">Jaiver Martínez</option>
+                            <option value="Gabriela Martínez">Gabriela Martínez</option>
+                            <option value="Valeria Martínez">Valeria Martínez</option>
+                            <option value="Elizabeth Parra">Elizabeth Parra</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1.5">Tarea Realizada</label>
+                        <select id="taskSelect" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-400">
+                            <option value="">Selecciona una tarea...</option>
+                            <option value="Esterilizar Gata">Esterilizar Gata (3000 pts)</option>
+                            <option value="Crear y Separar Arenero para Otra Gata">Crear/Separar Arenero para Otra Gata (2000 pts)</option>
+                            <option value="Aprobar Curso de Platzi">Aprobar Curso de Platzi (2000 pts)</option>
+                            <option value="Planchar la ropa">Planchar la ropa (1000 pts)</option>
+                            <option value="Desparasitar Gata">Desparasitar Gata (1000 pts)</option>
+                            <option value="Arreglar el Reloj">Arreglar el Reloj (700 pts)</option>
+                            <option value="Arrancar Proyecto de Ortodoncia">Arrancar Proyecto de Ortodoncia (500 pts)</option>
+                            <option value="Lavar los baños">Lavar los baños (300 pts)</option>
+                            <option value="Hacer la comida">Hacer la comida (300 pts)</option>
+                            <option value="Limpiar las cacas / arenero">Limpiar las cacas / arenero (200 pts)</option>
+                            <option value="Lavar los platos">Lavar los platos (200 pts)</option>
+                            <option value="Doblar la ropa dentro de los clósets">Doblar la ropa en clósets (140 pts)</option>
+                            <option value="Sacar la ropa de la lavadora">Sacar ropa de lavadora (120 pts)</option>
+                            <option value="Echar ropa a la lavadora">Echar ropa a lavadora (110 pts)</option>
+                            <option value="Calentar la comida">Calentar la comida (100 pts)</option>
+                            <option value="Botar la basura">Botar la basura (100 pts)</option>
+                            <option value="Hacer Mandados Tienda o Droguería">Hacer Mandados (90 pts)</option>
+                            <option value="Tirar la Basura al Shut de Basuras">Tirar Basura al Shut (90 pts)</option>
+                            <option value="Lavar la nevera">Lavar la nevera (90 pts)</option>
+                            <option value="Trapear la sala">Trapear la sala (80 pts)</option>
+                            <option value="Trapear las habitaciones">Trapear habitaciones (80 pts)</option>
+                            <option value="Colgar la ropa a secar">Colgar ropa a secar (70 pts)</option>
+                            <option value="Barrer la sala">Barrer la sala (60 pts)</option>
+                            <option value="Barrer las habitaciones">Barrer habitaciones (60 pts)</option>
+                            <option value="Limpiar los espejos">Limpiar los espejos (50 pts)</option>
+                            <option value="Limpiar el polvo de muebles">Limpiar polvo de muebles (50 pts)</option>
+                            <option value="Tender la cama">Tender la cama (40 pts)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1.5">Duración (Minutos)</label>
+                        <input id="durationInput" type="number" min="1" max="600" value="20" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-400" />
+                    </div>
+                </div>
+
+                <!-- Carga de Fotos (Antes / Después) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-700/80 space-y-2">
+                        <label class="block text-xs font-semibold text-slate-300">📸 Foto 1: Antes del Trabajo</label>
+                        <input type="file" id="beforePhotoInput" accept="image/*" required onchange="previewImage(this, 'beforePreview')" class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-amber-400 hover:file:bg-slate-700 cursor-pointer" />
+                        <div id="beforePreview" class="mt-2 hidden rounded-lg overflow-hidden border border-slate-700 max-h-48 flex justify-center bg-black/40">
+                            <img src="" alt="Vista previa Antes" class="object-contain max-h-48" />
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-700/80 space-y-2">
+                        <label class="block text-xs font-semibold text-slate-300">📸 Foto 2: Después del Trabajo</label>
+                        <input type="file" id="afterPhotoInput" accept="image/*" required onchange="previewImage(this, 'afterPreview')" class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-amber-400 hover:file:bg-slate-700 cursor-pointer" />
+                        <div id="afterPreview" class="mt-2 hidden rounded-lg overflow-hidden border border-slate-700 max-h-48 flex justify-center bg-black/40">
+                            <img src="" alt="Vista previa Después" class="object-contain max-h-48" />
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" id="submitBtn" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-2 mt-4">
+                    🚀 Evaluar y Enviar Tarea
+                </button>
+            </form>
+        </section>
+
+        <!-- Tabla de Clasificación / Leaderboard -->
+        <section class="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-xl space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-700 pb-3">
+                <h2 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+                    🥇 Tabla de Clasificación
+                </h2>
+                <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-700 text-xs">
+                    <button onclick="setPeriod('hoy')" id="btnPeriodHoy" class="px-3 py-1.5 rounded-lg font-medium transition text-slate-400">Hoy</button>
+                    <button onclick="setPeriod('semana')" id="btnPeriodSemana" class="px-3 py-1.5 rounded-lg font-medium transition bg-slate-800 text-amber-400 shadow">Esta Semana</button>
+                    <button onclick="setPeriod('mes')" id="btnPeriodMes" class="px-3 py-1.5 rounded-lg font-medium transition text-slate-400">Este Mes</button>
+                </div>
+            </div>
+
+            <div id="leaderboardContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Cargado dinámicamente -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal de Cargando / Procesando IA -->
+    <div id="loadingModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
+            <div class="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <h3 class="text-base font-bold text-amber-400">Evaluando Evidencias</h3>
+            <p id="loadingMessage" class="text-xs text-slate-300 leading-relaxed">Comprimiendo imágenes y consultando los modelos Gemini IA en cascada...</p>
+        </div>
+    </div>
+
+    <!-- Modal Resultado de Evaluación -->
+    <div id="evalModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div class="text-center space-y-1">
+                <div id="evalIcon" class="text-4xl mb-1">🎉</div>
+                <h3 id="evalTitle" class="text-lg font-bold text-amber-400">¡Tarea Evaluada!</h3>
+                <p id="evalUserTask" class="text-xs text-slate-300"></p>
+            </div>
+            <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-2">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span class="text-xs text-slate-400">Puntos Otorgados:</span>
+                    <span id="evalPoints" class="text-base font-bold text-amber-400">0 pts</span>
+                </div>
+                <div class="text-xs text-slate-300 pt-1 leading-relaxed">
+                    <span class="block text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1">Observación de la IA:</span>
+                    <span id="evalObs"></span>
+                </div>
+            </div>
+            <button onclick="closeModal('evalModal')" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 font-bold py-2.5 rounded-xl text-xs transition">
+                Entendido
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Historial del Usuario -->
+    <div id="historyModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-2xl w-full space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 id="historyTitle" class="text-base font-bold text-amber-400">Historial de Tareas</h3>
+                <button onclick="closeModal('historyModal')" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+            </div>
+            <div id="historyContent" class="overflow-y-auto space-y-3 flex-1 pr-1">
+                <!-- Historial cargado dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Solicitud de Dinero -->
+    <div id="moneyModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
+                    💰 Redimir Puntos por Dinero
+                </h3>
+                <button onclick="closeModal('moneyModal')" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+                Convertidor: <strong class="text-amber-400">1,000 pts = $20,000 COP</strong> (Se requiere acumulado suficiente de la semana en curso).
+            </p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Solicitante</label>
+                    <select id="moneyUserSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-400">
+                        <option value="Jaiver Martínez">Jaiver Martínez</option>
+                        <option value="Gabriela Martínez">Gabriela Martínez</option>
+                        <option value="Valeria Martínez">Valeria Martínez</option>
+                        <option value="Elizabeth Parra">Elizabeth Parra</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Monto en Pesos ($ COP)</label>
+                    <input id="moneyAmountInput" type="number" step="1000" min="1000" placeholder="Ej: 20000" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-400" />
+                </div>
+                <div id="moneyValidationMsg" class="text-xs p-2.5 rounded-lg hidden"></div>
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="validateMoneyRequest()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-100 font-bold py-2.5 rounded-xl text-xs transition">
+                    Validar Puntos
+                </button>
+                <button onclick="submitMoneyRequest()" id="btnSubmitMoney" disabled class="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-2.5 rounded-xl text-xs transition">
+                    Enviar Solicitud
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPeriod = 'semana';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLeaderboard(currentPeriod);
+            loadCooperativeGoal();
+        });
+
+        function setPeriod(p) {
+            currentPeriod = p;
+            ['Hoy', 'Semana', 'Mes'].forEach(item => {
+                const btn = document.getElementById('btnPeriod' + item);
+                if (item.toLowerCase() === p) {
+                    btn.className = 'px-3 py-1.5 rounded-lg font-medium transition bg-slate-800 text-amber-400 shadow';
+                } else {
+                    btn.className = 'px-3 py-1.5 rounded-lg font-medium transition text-slate-400';
+                }
+            });
+            loadLeaderboard(currentPeriod);
+        }
+
+        function previewImage(input, previewId) {
+            const previewDiv = document.getElementById(previewId);
+            const img = previewDiv.querySelector('img');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    img.src = e.target.result;
+                    previewDiv.classList.remove('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                previewDiv.classList.add('hidden');
+            }
+        }
+
+        async function compressImageFile(file) {
+            if (!file) return null;
+            const options = {
+                maxSizeMB: 0.8,
+                maxWidthOrHeight: 1280,
+                useWebWorker: true
+            };
+            try {
+                return await imageCompression(file, options);
+            } catch (e) {
+                console.warn('Fallback imagen sin compresión:', e);
+                return file;
+            }
+        }
+
+        async function handleTaskSubmit(event) {
+            event.preventDefault();
+            
+            const user = document.getElementById('userSelect').value;
+            const task = document.getElementById('taskSelect').value;
+            const duration = document.getElementById('durationInput').value;
+            const beforeInput = document.getElementById('beforePhotoInput');
+            const afterInput = document.getElementById('afterPhotoInput');
+
+            if (!user || !task || !beforeInput.files[0] || !afterInput.files[0]) {
+                alert('Por favor completa todos los campos requeridos y selecciona ambas fotos.');
+                return;
+            }
+
+            showModal('loadingModal');
+            document.getElementById('loadingMessage').innerText = 'Comprimiendo fotos y consultando IA...';
+
+            try {
+                const compressedBefore = await compressImageFile(beforeInput.files[0]);
+                const compressedAfter = await compressImageFile(afterInput.files[0]);
+
+                const formData = new FormData();
+                formData.append('user_name', user);
+                formData.append('task_name', task);
+                formData.append('duration_minutes', duration);
+                formData.append('before_photo', compressedBefore, 'before.jpg');
+                formData.append('after_photo', compressedAfter, 'after.jpg');
+
+                const response = await fetch('/api/evaluate-task', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                closeModal('loadingModal');
+
+                if (data.status === 'success') {
+                    document.getElementById('evalIcon').innerText = data.completado ? '🎉' : '⚠️';
+                    document.getElementById('evalTitle').innerText = data.completado ? '¡Tarea Aprobada!' : 'Tarea No Aprobada';
+                    document.getElementById('evalUserTask').innerText = `${data.user_name} - ${task} (${data.duration_minutes} min)`;
+                    document.getElementById('evalPoints').innerText = `${data.puntos} pts / ${data.max_points} max`;
+                    document.getElementById('evalObs').innerText = data.observaciones || 'Sin observaciones adicionales.';
+                    showModal('evalModal');
+
+                    // Resetear Formulario
+                    document.getElementById('taskForm').reset();
+                    document.getElementById('beforePreview').classList.add('hidden');
+                    document.getElementById('afterPreview').classList.add('hidden');
+
+                    loadLeaderboard(currentPeriod);
+                    loadCooperativeGoal();
+                } else {
+                    alert('Error en la evaluación: ' + (data.message || 'Intente nuevamente.'));
+                }
+            } catch (err) {
+                closeModal('loadingModal');
+                alert('Error al conectar con el servidor: ' + err.message);
+            }
+        }
+
+        async function loadLeaderboard(periodo) {
+            try {
+                const res = await fetch(`/api/leaderboard?periodo=${periodo}`);
+                const data = await res.json();
+                const container = document.getElementById('leaderboardContainer');
+                container.innerHTML = '';
+
+                const sortedUsers = Object.entries(data).sort((a, b) => b[1].puntos - a[1].puntos);
+
+                sortedUsers.forEach(([name, stats], index) => {
+                    const medals = ['🥇', '🥈', '🥉', '👤'];
+                    const medal = medals[index] || '👤';
+                    
+                    const card = document.createElement('div');
+                    card.className = 'bg-slate-900 border border-slate-700/80 rounded-xl p-4 flex justify-between items-center shadow-md';
+                    card.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">${medal}</span>
+                            <div>
+                                <div class="font-bold text-slate-100 text-sm flex items-center gap-1.5">
+                                    ${name}
+                                </div>
+                                <div class="text-xs text-slate-400">${stats.tareas} tarea(s) registrada(s)</div>
+                            </div>
+                        </div>
+                        <div class="text-right flex flex-col items-end gap-1">
+                            <span class="text-base font-extrabold text-amber-400">${stats.puntos} pts</span>
+                            <button onclick="openHistoryModal('${name}')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-700 transition">
+                                Ver Historial
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (e) {
+                console.error('Error cargando leaderboard:', e);
+            }
+        }
+
+        async function loadCooperativeGoal() {
+            try {
+                const res = await fetch('/api/cooperative-goal');
+                const data = await res.json();
+                document.getElementById('goalText').innerText = `${data.puntos_actuales.toLocaleString()} / ${data.meta.toLocaleString()} pts`;
+                document.getElementById('goalProgressBar').style.width = `${data.porcentaje}%`;
+                document.getElementById('goalPercentage').innerText = `${data.porcentaje}% completado`;
+            } catch (e) {
+                console.error('Error cargando meta cooperativa:', e);
+            }
+        }
+
+        async function openHistoryModal(userName) {
+            document.getElementById('historyTitle').innerText = `Historial de ${userName}`;
+            const content = document.getElementById('historyContent');
+            content.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">Cargando tareas...</div>';
+            showModal('historyModal');
+
+            try {
+                const res = await fetch(`/api/user-tasks?user=${encodeURIComponent(userName)}&periodo=${currentPeriod}`);
+                const tasks = await res.json();
+                
+                content.innerHTML = '';
+                if (!Array.isArray(tasks) || tasks.length === 0) {
+                    content.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">No hay tareas registradas para este periodo.</div>';
+                    return;
+                }
+
+                tasks.forEach(t => {
+                    const item = document.createElement('div');
+                    item.className = 'bg-slate-900 border border-slate-700/80 rounded-xl p-3 text-xs space-y-1.5 shadow-sm';
+                    item.innerHTML = `
+                        <div class="flex justify-between items-center font-semibold text-slate-200">
+                            <span class="text-amber-300">${t.task_name}</span>
+                            <span class="text-amber-400 font-bold">+${t.puntos} pts</span>
+                        </div>
+                        <div class="text-slate-400 flex justify-between text-[11px]">
+                            <span>📅 ${t.fecha}</span>
+                            <span>⏱️ ${t.duracion} min</span>
+                        </div>
+                        <div class="text-slate-300 text-[11px] bg-slate-800/80 p-2 rounded border border-slate-800">
+                            ${t.observaciones}
+                        </div>
+                    `;
+                    content.appendChild(item);
+                });
+            } catch (e) {
+                content.innerHTML = '<div class="text-center py-6 text-red-400 text-xs">Error al cargar el historial.</div>';
+            }
+        }
+
+        function openMoneyModal() {
+            document.getElementById('moneyValidationMsg').classList.add('hidden');
+            document.getElementById('btnSubmitMoney').disabled = true;
+            showModal('moneyModal');
+        }
+
+        async function validateMoneyRequest() {
+            const user = document.getElementById('moneyUserSelect').value;
+            const amount = parseFloat(document.getElementById('moneyAmountInput').value || 0);
+            const msgDiv = document.getElementById('moneyValidationMsg');
+            const submitBtn = document.getElementById('btnSubmitMoney');
+
+            msgDiv.classList.remove('hidden', 'bg-emerald-900/50', 'text-emerald-300', 'bg-red-900/50', 'text-red-300');
+            
+            try {
+                const res = await fetch('/api/validate-money-request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_name: user, amount: amount })
+                });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    msgDiv.className = 'text-xs p-2.5 rounded-lg bg-emerald-900/50 text-emerald-300 border border-emerald-700';
+                    msgDiv.innerText = `✅ Solicitud viable. Se descontarán ${data.puntos_a_descontar} pts de tus ${data.puntos_actuales} pts disponibles.`;
+                    submitBtn.disabled = false;
+                } else {
+                    msgDiv.className = 'text-xs p-2.5 rounded-lg bg-red-900/50 text-red-300 border border-red-700';
+                    msgDiv.innerText = `❌ ${data.message}`;
+                    submitBtn.disabled = true;
+                }
+            } catch (e) {
+                msgDiv.className = 'text-xs p-2.5 rounded-lg bg-red-900/50 text-red-300 border border-red-700';
+                msgDiv.innerText = 'Error al validar la solicitud.';
+                submitBtn.disabled = true;
+            }
+        }
+
+        async function submitMoneyRequest() {
+            const user = document.getElementById('moneyUserSelect').value;
+            const amount = parseFloat(document.getElementById('moneyAmountInput').value || 0);
+            
+            try {
+                const res = await fetch('/api/request-money', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_name: user, amount: amount })
+                });
+                const data = await res.json();
+
+                closeModal('moneyModal');
+                if (data.status === 'success') {
+                    alert(data.message);
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (e) {
+                alert('Error enviando la solicitud.');
+            }
+        }
+
+        function showModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
