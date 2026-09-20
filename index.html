@@ -447,20 +447,18 @@
                 
                 if(data.status === "success") {
                     progressBar.style.width = "100%";
-                    setTimeout(() => {
-                        loadingBox.classList.add('hidden');
-                        document.getElementById('result-box').classList.remove('hidden');
+                    loadingBox.classList.add('hidden');
+                    document.getElementById('result-box').classList.remove('hidden');
 
-                        document.getElementById('res-user').innerText = `👤 Responsable: ${data.user_name}`;
-                        document.getElementById('res-duration').innerText = `⏱️ Duración: ${data.duration_minutes} min`;
-                        document.getElementById('res-model').innerText = `🤖 Modelo utilizado: ${data.modelo_usado}`;
-                        document.getElementById('res-status').innerText = `✅ Completado: ${data.completado ? 'Sí' : 'No'}`;
-                        document.getElementById('res-points').innerText = `⭐ Puntos obtenidos: +${data.puntos}`;
-                        document.getElementById('res-obs').innerText = `📝 Observaciones: ${data.observaciones}`;
-                        
-                        document.getElementById('link-before').href = data.before_url;
-                        document.getElementById('link-after').href = data.after_url;
-                    }, 200);
+                    document.getElementById('res-user').innerText = `👤 Responsable: ${data.user_name}`;
+                    document.getElementById('res-duration').innerText = `⏱️ Duración: ${data.duration_minutes} min`;
+                    document.getElementById('res-model').innerText = `🤖 Modelo utilizado: ${data.modelo_usado}`;
+                    document.getElementById('res-status').innerText = `✅ Completado: ${data.completado ? 'Sí' : 'No'}`;
+                    document.getElementById('res-points').innerText = `⭐ Puntos obtenidos: +${data.puntos}`;
+                    document.getElementById('res-obs').innerText = `📝 Observaciones: ${data.observaciones}`;
+                    
+                    document.getElementById('link-before').href = data.before_url;
+                    document.getElementById('link-after').href = data.after_url;
                 } else {
                     loadingBox.classList.add('hidden');
                     document.getElementById('step-2').classList.remove('hidden');
