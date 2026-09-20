@@ -4,6 +4,7 @@ import time
 import json
 import traceback
 import smtplib
+import asyncio
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta, date
@@ -558,7 +559,8 @@ async def evaluate_task(
                 for attempt in range(1, max_retries_per_model + 1):
                     try:
                         print(f"   -> Intento {attempt}/{max_retries_per_model} con {model_name}...")
-                        response = client.models.generate_content(
+                        response = await asyncio.to_thread(
+                            client.models.generate_content,
                             model=model_name,
                             contents=[img_before, img_after, prompt],
                             config=types.GenerateContentConfig(response_mime_type="application/json")
@@ -584,7 +586,7 @@ async def evaluate_task(
                     except Exception as attempt_err:
                         print(f"⚠️ Falló intento {attempt} con {model_name}: {attempt_err}")
                         if attempt < max_retries_per_model:
-                            time.sleep(1.5)
+                            await asyncio.sleep(1.5)
 
                 if model_success:
                     break
