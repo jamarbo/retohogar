@@ -5,6 +5,7 @@ import json
 import traceback
 import smtplib
 import asyncio
+import random
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta, date
@@ -250,6 +251,29 @@ async def saludo():
         "proyecto": "RetoHogar",
         "mensaje": "¡Bienvenido al proyecto RetoHogar! Tu plataforma para gamificar y organizar las tareas del hogar."
     }
+
+@app.get("/api/suggested-tasks")
+async def get_suggested_tasks(user_name: str):
+    try:
+        today_str = get_colombia_now().strftime("%Y-%m-%d")
+        seed_val = f"{user_name}_{today_str}"
+        rng = random.Random(seed_val)
+        all_tasks = list(TASK_POINTS.keys())
+        suggested = rng.sample(all_tasks, min(7, len(all_tasks)))
+        
+        tasks_with_points = [
+            {"name": t, "points": TASK_POINTS.get(t, 100)}
+            for t in suggested
+        ]
+        return {
+            "status": "success",
+            "user_name": user_name,
+            "date": today_str,
+            "tasks": tasks_with_points
+        }
+    except Exception as e:
+        print(f"❌ Error obteniendo tareas sugeridas: {e}")
+        return {"status": "error", "message": str(e)}
 
 @app.post("/api/validate-money-request")
 async def validate_money_request(req: MoneyRequest):
@@ -510,12 +534,13 @@ async def evaluate_task(
     user_name: str = Form(...),
     task_name: str = Form(...),
     duration_minutes: float = Form(...),
+    is_suggested: bool = Form(False),
     before_photo: UploadFile = File(...),
     after_photo: UploadFile = File(...)
 ):
     start_time = time.time()
     req_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"📥 [{req_time_str}] Petición recibida en /api/evaluate-task | Usuario: '{user_name}' | Tarea: '{task_name}' | Duración: {duration_minutes} min")
+    print(f"📥 [{req_time_str}] Petición recibida en /api/evaluate-task | Usuario: '{user_name}' | Tarea: '{task_name}' | Sugerida: {is_suggested} | Duración: {duration_minutes} min")
     
     models_to_try = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash']
     max_retries_per_model = 3
@@ -599,6 +624,11 @@ async def evaluate_task(
             eval_data = {"completado": True, "puntos": max_score, "observaciones": error_msg}
             used_model = "Ninguno (Fallo total)"
 
+        # Aplicar bonus de 200 puntos por tarea sugerida completada
+        if eval_data.get('completado') and is_suggested:
+            eval_data['puntos'] = eval_data.get('puntos', max_score) + 200
+            eval_data['observaciones'] += " ⭐ [BONUS: +200 pts por tarea sugerida del día completada!]"
+
         now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
 
         background_tasks.add_task(
@@ -625,6 +655,7 @@ async def evaluate_task(
             "max_points": max_score,
             "completado": eval_data.get('completado', False),
             "puntos": eval_data.get('puntos', 0),
+            "is_suggested": is_suggested,
             "observaciones": eval_data.get('observaciones', ''),
             "modelo_usado": used_model,
             "before_url": url_foto_antes,
