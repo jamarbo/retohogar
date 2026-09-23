@@ -117,7 +117,7 @@
                 </div>
                 <button onclick="resetApp()" class="w-full mt-2 bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded transition">Hacer otra tarea</button>
             </div>
-        </div>		
+        </div>
 
         <!-- Sección Podio Real -->
         <div id="section-podium" class="space-y-4">
@@ -140,6 +140,13 @@
                 <p class="text-[11px] text-slate-300 leading-tight">
                     💡 <strong class="text-amber-300">¿Qué pasa si lo logramos?</strong> Al alcanzar la meta conjunta de la familia antes de finalizar la semana, <span class="text-amber-200">se desbloquea una recompensa en equipo</span> (como una salida especial o una cena en conjunto).
                 </p>
+            </div>
+
+            <!-- Botón Mostrar todos los participantes -->
+            <div class="flex justify-end mb-2">
+                <button onclick="toggleShowAll()" id="btn-toggle-all" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 font-bold px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow">
+                    👥 <span id="btn-toggle-all-text">mostrar todos</span>
+                </button>
             </div>
 
             <div id="podium-content" class="space-y-3">
@@ -233,6 +240,7 @@
         let globalPeriodo = 'semana';
         let allUserTasks = [];
         let pendingMoneyRequest = null;
+        let showAllParticipants = false;
 
         function switchTab(tab, periodo = 'semana') {
             if(tab === 'task') {
@@ -248,6 +256,15 @@
                 globalPeriodo = periodo;
                 loadLeaderboard(periodo);
             }
+        }
+
+        function toggleShowAll() {
+            showAllParticipants = !showAllParticipants;
+            const btnText = document.getElementById('btn-toggle-all-text');
+            if(btnText) {
+                btnText.innerText = showAllParticipants ? "mostrar solo Gabriela y Valeria" : "mostrar todos";
+            }
+            loadLeaderboard(globalPeriodo);
         }
 
         function openMoneyModal() {
@@ -523,12 +540,15 @@
                 groupCard.style.display = 'block';
             }
 
+            const btnText = document.getElementById('btn-toggle-all-text');
+            if(btnText) {
+                btnText.innerText = showAllParticipants ? "mostrar solo Gabriela y Valeria" : "mostrar todos";
+            }
+
             try {
                 const res = await fetch(`/api/leaderboard?periodo=${periodo}`);
                 if (!res.ok) throw new Error("Error de respuesta del servidor");
                 const data = await res.json();
-                
-                const sorted = Object.entries(data).sort((a,b) => b[1].puntos - a[1].puntos);
                 
                 let totalGroupPoints = 0;
                 Object.values(data).forEach(info => {
@@ -541,13 +561,22 @@
                 document.getElementById('group-challenge-points').innerText = `${totalGroupPoints.toLocaleString()} / ${targetGoal.toLocaleString()} pts (${percentage}%)`;
                 document.getElementById('group-progress-bar').style.width = `${percentage}%`;
 
+                const sorted = Object.entries(data).sort((a,b) => b[1].puntos - a[1].puntos);
+                
+                let visible = sorted;
+                if (!showAllParticipants) {
+                    visible = sorted.filter(([name]) => 
+                        name.toLowerCase().includes('gabriela') || name.toLowerCase().includes('valeria')
+                    );
+                }
+
                 let html = "";
                 
-                if(sorted.length > 0) {
-                    const first = sorted[0];
-                    const second = sorted.length > 1 ? sorted[1] : null;
-                    const third = sorted.length > 2 ? sorted[2] : null;
-                    const rest = sorted.slice(3);
+                if(visible.length > 0) {
+                    const first = visible[0];
+                    const second = visible.length > 1 ? visible[1] : null;
+                    const third = visible.length > 2 ? visible[2] : null;
+                    const rest = visible.slice(3);
 
                     html += `
                         <div onclick="openDetail('${first[0]}')" class="bg-gradient-to-b from-amber-500/20 to-slate-900 border-2 border-amber-500 rounded-2xl p-4 text-center shadow-lg relative overflow-hidden mb-3 cursor-pointer hover:border-amber-400 transition">
@@ -563,7 +592,7 @@
                     `;
 
                     if(second || third) {
-                        html += `<div class="grid grid-cols-2 gap-2 mb-3">`;
+                        html += `<div class="grid grid-cols-${third ? '2' : '1'} gap-2 mb-3">`;
                         
                         if(second) {
                             html += `
