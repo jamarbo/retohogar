@@ -625,7 +625,6 @@ async def evaluate_task(
             eval_data = {"completado": True, "puntos": max_score, "observaciones": error_msg}
             used_model = "Ninguno (Fallo total)"
 
-        # Aplicar bonus de 200 puntos por tarea sugerida completada
         if eval_data.get('completado') and is_suggested:
             eval_data['puntos'] = eval_data.get('puntos', max_score) + 200
             eval_data['observaciones'] += " ⭐ [BONUS: +200 pts por tarea sugerida del día completada!]"
