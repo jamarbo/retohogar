@@ -747,7 +747,7 @@ async def get_leaderboard(periodo: str = "hoy"):
     return totales
 
 @app.get("/api/cooperative-goal")
-async def get_cooperative_goal(meta_semanal: int = 12000):
+async def get_cooperative_goal(meta_semanal: int = 9000):
     total_puntos_semana = 0
     try:
         creds = get_google_credentials()
