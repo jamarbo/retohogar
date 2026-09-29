@@ -290,7 +290,7 @@ async def validate_money_request(req: MoneyRequest):
             }
             
         puntos_actuales = obtener_puntos_semana(user_name)
-        puntos_a_descontar = int((requested_amount / 15000.0) * 1000.0)
+        puntos_a_descontar = int((requested_amount / 10000.0) * 1000.0)
         
         if puntos_a_descontar <= 0:
             return {
@@ -328,7 +328,7 @@ async def request_money(req: MoneyRequest):
             }
             
         puntos_actuales = obtener_puntos_semana(user_name)
-        puntos_a_descontar = int((requested_amount / 15000.0) * 1000.0)
+        puntos_a_descontar = int((requested_amount / 10000.0) * 1000.0)
         
         if puntos_actuales < puntos_a_descontar:
             return {
