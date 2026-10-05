@@ -54,7 +54,7 @@ TASK_POINTS = {
     "Lavar la nevera": 90,
     "Trapear la sala": 80,
     "Trapear las habitaciones": 80,
-    "Colgar la ropa a secar": 70,
+    "Colgar la ropa a secar": 140,
     "Barrer la sala": 60,
     "Barrer las habitaciones": 60,
     "Limpiar los espejos": 50,
