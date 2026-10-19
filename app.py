@@ -42,7 +42,7 @@ TASK_POINTS = {
     "Diligencias y/o Mandados Importantes": 350,
     "Limpiar las cacas / arenero": 300,
     "Lavar los baños": 300,
-    "Hacer la comida": 300,
+    "Hacer la comida": 400,
     "Calentar la comida": 200,
     "Lavar los platos": 300,
     "Doblar la ropa dentro de los clósets": 200,
