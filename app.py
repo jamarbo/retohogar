@@ -19,12 +19,14 @@ from google.auth import default
 from google.oauth2 import service_account
 from pydantic import BaseModel
 import base64
+
 import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-app = FastAPI(title="Reto del Hogar")
+APP_ENV = os.environ.get("APP_ENV", "Desarrollo")
+app = FastAPI(title=f"Reto del Hogar ({APP_ENV})")
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
@@ -906,6 +908,10 @@ async def get_user_tasks(user: str, periodo: str = "semana"):
         return {"error": str(e)}
 
     return user_tasks
+
+@app.get("/api/env")
+async def get_env():
+    return {"APP_ENV": APP_ENV}
 
 @app.get("/")
 async def home():

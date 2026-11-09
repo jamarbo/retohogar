@@ -10,7 +10,7 @@
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-start p-4">
     <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700 relative">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-amber-400">🧹 Reto del Hogar</h1>
+            <h1 class="text-2xl font-bold text-amber-400">🧹 Reto del Hogar <span id="app-env-badge" class="ml-2 text-[10px] bg-slate-700 text-amber-100 px-2 py-0.5 rounded-full font-normal hidden"></span></h1>
             <a href="/admin/login" target="_blank" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg text-slate-300 font-medium transition">Panel Admin</a>
         </div>
         
@@ -719,5 +719,5 @@
 
         switchTab('podium', 'semana');
     </script>
-</body>
+<script>async function loadEnv(){try{const res=await fetch("/api/env");const data=await res.json();const badge=document.getElementById("app-env-badge");if(data.APP_ENV){badge.textContent=data.APP_ENV;badge.classList.remove("hidden");if(data.APP_ENV.toLowerCase()==="producci�n"){badge.classList.add("bg-emerald-700");badge.classList.remove("bg-slate-700");}}}catch(e){console.error("Error loading env:", e);}} document.addEventListener("DOMContentLoaded", loadEnv);</script></body>
 </html>
