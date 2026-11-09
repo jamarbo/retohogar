@@ -7,3 +7,4 @@ pillow
 google-auth
 google-api-python-client
 requests
+python_dotenv

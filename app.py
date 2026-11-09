@@ -6,8 +6,6 @@ import traceback
 import smtplib
 import asyncio
 import random
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta, date
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request, Cookie, Response, BackgroundTasks
@@ -22,13 +20,17 @@ from google.oauth2 import service_account
 from pydantic import BaseModel
 import base64
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(title="Reto del Hogar")
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
-SHEET_NAME = "Registro_Tareas_Hogar"
+SHEET_NAME = os.environ.get('SHEET_NAME')
+GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 
 TASK_POINTS = {
     "Esterilizar Gata": 4000,
@@ -74,17 +76,26 @@ def get_colombia_now():
     return datetime.utcnow() - timedelta(hours=5)
 
 def get_google_credentials():
-    creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")    
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
     if creds_json:
-        creds_dict = json.loads(creds_json)
-        return service_account.Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        try:
+            creds_dict = json.loads(creds_json)
+            return service_account.Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        except json.JSONDecodeError:
+            # If it's a file path instead of raw JSON
+            if os.path.exists(creds_json):
+                return service_account.Credentials.from_service_account_file(creds_json, scopes=scopes)
+            raise RuntimeError(f"GOOGLE_CREDENTIALS_JSON contains invalid JSON and is not a valid file path: {creds_json}")
     else:
-        creds, _ = default()
-        return creds
+        try:
+            creds, _ = default()
+            return creds
+        except Exception as e:
+            raise RuntimeError("Could not find default Google credentials and GOOGLE_CREDENTIALS_JSON is not set") from e
 
 def enviar_correo_smtp(asunto: str, contenido_html: str):
     try:
@@ -114,7 +125,7 @@ def enviar_correo_smtp(asunto: str, contenido_html: str):
 
 def subir_foto_drive_usuario(user_name, filename, photo_bytes):
     try:
-        github_token = os.environ.get("GITHUB_TOKEN")
+        github_token = os.environ.get('GITHUB_TOKEN')
         repo_name = "jamarbo/retohogar"
         
         if not github_token:
@@ -369,7 +380,6 @@ async def request_money(req: MoneyRequest):
         </body>
         </html>
         """
-        enviar_correo_smtp(asunto_correo, cuerpo_html)
         
         return {
             "status": "success",
