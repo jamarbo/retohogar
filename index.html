@@ -8,6 +8,25 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-start p-4">
+    <div id="welcome-splash" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="welcome-title" aria-describedby="welcome-description">
+        <div class="w-full max-w-md rounded-3xl border border-amber-400/40 bg-slate-800 p-7 text-center shadow-2xl shadow-amber-950/30">
+            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/15 text-4xl" aria-hidden="true">🧹</div>
+            <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-amber-300">Reto del Hogar</p>
+            <h1 id="welcome-title" class="text-3xl font-black text-white">¡Un nuevo reto te espera!</h1>
+            <p id="welcome-description" class="mt-3 text-sm leading-relaxed text-slate-300">
+                Cada día tendrás una asignación automática de hasta <strong class="text-amber-300">10 tareas distintas</strong> para completar.
+            </p>
+            <div class="my-6 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
+                <span class="text-3xl" aria-hidden="true">⭐</span>
+                <p class="mt-2 text-lg font-extrabold text-amber-300">Bono de 500 puntos</p>
+                <p class="mt-1 text-xs leading-relaxed text-slate-300">Completa todas las tareas asignadas para recibirlo automáticamente.</p>
+            </div>
+            <button id="welcome-start" type="button" class="w-full rounded-xl bg-amber-500 px-5 py-3 font-extrabold text-slate-950 shadow-lg shadow-amber-950/30 transition hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2 focus:ring-offset-slate-800">
+                Comenzar Reto
+            </button>
+        </div>
+    </div>
+
     <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700 relative">
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-bold text-amber-400">🧹 Reto del Hogar <span id="app-env-badge" class="ml-2 text-[10px] bg-slate-700 text-amber-100 px-2 py-0.5 rounded-full font-normal hidden"></span></h1>
@@ -25,46 +44,19 @@
             <div>
                 <label class="block text-sm font-medium mb-1 text-slate-300">Integrante:</label>
                 <select id="user_name" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-amber-500">
-                    <option value="Jaiver Martínez">Jaiver Martínez (Administrador)</option>
-                    <option value="Gabriela Martínez">Gabriela Martínez</option>
-                    <option value="Valeria Martínez">Valeria Martínez</option>
-                    <option value="Elizabeth Parra">Elizabeth Parra</option>
+                    <option value="Jaiver Martínez" data-user-id="jaiver-martinez">Jaiver Martínez (Administrador)</option>
+                    <option value="Gabriela Martínez" data-user-id="gabriela-martinez">Gabriela Martínez</option>
+                    <option value="Valeria Martínez" data-user-id="valeria-martinez">Valeria Martínez</option>
+                    <option value="Elizabeth Parra" data-user-id="elizabeth-parra">Elizabeth Parra</option>
                 </select>
             </div>
 
             <div>
                 <label class="block text-sm font-medium mb-1 text-slate-300">Seleccionar Tarea:</label>
-                <select id="task_name" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-amber-500">
-                    <option value="Esterilizar Gata">Esterilizar Gata (4000 pts)</option> 
-                    <option value="Crear y Separar Arenero para Otra Gata">Crear y Separar Arenero para Otra Gata (2000 pts)</option>
-                    <option value="Aprobar Curso de Platzi">Aprobar Curso de Platzi (2000 pts)</option>
-                    <option value="Planchar la ropa">Planchar la ropa (1000 pts)</option>
-                    <option value="Vacunar Gata">Vacunar Gata (1000 pts)</option>
-                    <option value="Desparasitar Gata">Desparasitar Gata (1000 pts)</option>
-                    <option value="Arreglar el Reloj">Arreglar el Reloj (700 pts)</option>  
-                    <option value="Arrancar Proyecto de Ortodoncia">Arrancar Proyecto de Ortodoncia (500 pts)</option>
-                    <option value="Diligencias y/o Mandados Importantes">Diligencias y/o Mandados Importantes (350 pts)</option>
-                    <option value="Limpiar las cacas / arenero">Limpiar las cacas / arenero (300 pts)</option>
-                    <option value="Lavar los baños">Lavar los baños (300 pts)</option>
-                    <option value="Hacer la comida">Hacer la comida (400 pts)</option>
-                    <option value="Calentar la comida">Calentar la comida (200 pts)</option>
-                    <option value="Lavar los platos">Lavar los platos (300 pts)</option>
-                    <option value="Doblar la ropa dentro de los clósets">Doblar la ropa dentro de los clósets (200 pts)</option>
-                    <option value="Sacar la ropa de la lavadora">Sacar la ropa de la lavadora (120 pts)</option>
-                    <option value="Echar ropa a la lavadora">Echar ropa a la lavadora (110 pts)</option>
-                    <option value="Botar la basura">Botar la basura (100 pts)</option>
-                    <option value="Hacer Mandados Tienda o Droguería">Hacer Mandados Tienda o Droguería (90 pts)</option>
-                    <option value="Tirar la Basura al Shut de Basuras">Tirar la Basura al Shut de Basuras (90 pts)</option>
-                    <option value="Lavar la nevera">Lavar la nevera (90 pts)</option>
-                    <option value="Trapear la sala">Trapear la sala (80 pts)</option>
-                    <option value="Trapear las habitaciones">Trapear las habitaciones (80 pts)</option>
-                    <option value="Colgar la ropa a secar">Colgar la ropa a secar (140 pts)</option>
-                    <option value="Barrer la sala">Barrer la sala (60 pts)</option>
-                    <option value="Barrer las habitaciones">Barrer las habitaciones (60 pts)</option>
-                    <option value="Limpiar los espejos">Limpiar los espejos (50 pts)</option>
-                    <option value="Limpiar el polvo de muebles">Limpiar el polvo de muebles (50 pts)</option>
-                    <option value="Tender la cama">Tender la cama (40 pts)</option>
+                <select id="task_name" disabled class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-amber-500">
+                    <option value="">Cargando tareas del día...</option>
                 </select>
+                <p id="daily-task-status" class="mt-1 text-xs text-slate-400" aria-live="polite">Cargando cuota diaria...</p>
             </div>
 
             <!-- Botón de Solicitud de Plata Directa -->
@@ -242,6 +234,132 @@
         let allUserTasks = [];
         let pendingMoneyRequest = null;
         let showAllParticipants = false;
+        let dailyTasksReady = false;
+        let dailyTasksRequestId = 0;
+
+        function getColombiaDateKey() {
+            return new Intl.DateTimeFormat('en-CA', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                timeZone: 'America/Bogota'
+            }).format(new Date());
+        }
+
+        function showDailyWelcome() {
+            const splash = document.getElementById('welcome-splash');
+            const startButton = document.getElementById('welcome-start');
+            const storageKey = `retohogar:welcome-seen:${getColombiaDateKey()}`;
+            let alreadySeen = false;
+            try {
+                alreadySeen = localStorage.getItem(storageKey) === 'true';
+            } catch (error) {
+                console.warn('No se pudo consultar el estado de bienvenida:', error);
+            }
+
+            if (alreadySeen) return;
+            splash.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            startButton.focus();
+            startButton.addEventListener('click', () => {
+                try {
+                    localStorage.setItem(storageKey, 'true');
+                } catch (error) {
+                    console.warn('No se pudo guardar el estado de bienvenida:', error);
+                }
+                splash.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }, { once: true });
+        }
+
+        showDailyWelcome();
+
+        function renderDailyTasks(state, isLive) {
+            const taskSelect = document.getElementById('task_name');
+            const status = document.getElementById('daily-task-status');
+            const startButton = document.querySelector('#step-1 button');
+            taskSelect.replaceChildren();
+            let selectedTask = false;
+
+            state.tasks.forEach(task => {
+                const option = document.createElement('option');
+                option.value = task.name;
+                option.textContent = `${task.name} (${task.points} pts)${task.completed ? ' — Completada' : ''}`;
+                option.disabled = task.completed || !isLive;
+                option.selected = isLive && !task.completed && !selectedTask;
+                selectedTask ||= option.selected;
+                taskSelect.appendChild(option);
+            });
+
+            const quotaComplete = state.remaining_count === 0;
+            if (quotaComplete) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Cuota diaria completada';
+                option.disabled = true;
+                taskSelect.appendChild(option);
+            }
+
+            taskSelect.disabled = !isLive || quotaComplete;
+            if (startButton) startButton.disabled = !isLive || quotaComplete;
+            status.textContent = `Cuota ${state.date}: ${state.completed_count}/${state.total_tasks} tareas completadas` +
+                (state.bonus_awarded ? ` · Bono de ${state.bonus_points} pts acreditado` : '');
+        }
+
+        async function loadDailyTasks() {
+            const requestId = ++dailyTasksRequestId;
+            const userSelect = document.getElementById('user_name');
+            const userId = userSelect.selectedOptions[0].dataset.userId;
+            const taskSelect = document.getElementById('task_name');
+            const status = document.getElementById('daily-task-status');
+            dailyTasksReady = false;
+            taskSelect.disabled = true;
+            const startButton = document.querySelector('#step-1 button');
+            if (startButton) startButton.disabled = true;
+            status.textContent = 'Sincronizando cuota diaria...';
+            let cachedState = null;
+            try {
+                cachedState = JSON.parse(localStorage.getItem(`retohogar:daily-tasks:${userId}`) || 'null');
+                if (cachedState && Array.isArray(cachedState.tasks)) {
+                    renderDailyTasks(cachedState, false);
+                    status.textContent = `Cuota local del ${cachedState.date}; sincronizando con el servidor...`;
+                }
+            } catch (storageError) {
+                console.warn('No se pudo leer la cuota diaria de localStorage:', storageError);
+            }
+
+            try {
+                const res = await fetch(`/api/tasks/daily/${encodeURIComponent(userId)}`);
+                const data = await res.json();
+                if (requestId !== dailyTasksRequestId) return;
+                if (!res.ok) throw new Error(data.detail || `Error del servidor (${res.status})`);
+                if (data.status !== 'success') throw new Error(data.message || 'No se pudo cargar la cuota diaria.');
+
+                try {
+                    localStorage.setItem(`retohogar:daily-tasks:${userId}`, JSON.stringify(data));
+                } catch (storageError) {
+                    console.warn('No se pudo guardar la cuota diaria en localStorage:', storageError);
+                }
+                renderDailyTasks(data, true);
+                dailyTasksReady = true;
+            } catch (error) {
+                if (requestId !== dailyTasksRequestId) return;
+                taskSelect.replaceChildren();
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'No se pudo cargar la cuota diaria';
+                taskSelect.appendChild(option);
+                taskSelect.disabled = true;
+                if (cachedState && Array.isArray(cachedState.tasks)) {
+                    renderDailyTasks(cachedState, false);
+                }
+                status.textContent = `Error al cargar la cuota diaria: ${error.message}`;
+                console.error('Error cargando tareas diarias:', error);
+            }
+        }
+
+        document.getElementById('user_name').addEventListener('change', loadDailyTasks);
+        loadDailyTasks();
 
         function switchTab(tab, periodo = 'semana') {
             if(tab === 'task') {
@@ -387,12 +505,18 @@
         function startTask() {
             const photoInput = document.getElementById('before_photo');
 
+            if (!dailyTasksReady) {
+                alert("Espera a que se sincronice la cuota diaria.");
+                return;
+            }
             if(photoInput.files.length === 0) {
                 alert("Por favor toma o selecciona la foto inicial.");
                 return;
             }
 
             startTime = new Date();
+            document.getElementById('user_name').disabled = true;
+            document.getElementById('task_name').disabled = true;
             
             document.getElementById('step-1').classList.add('hidden');
             document.getElementById('step-2').classList.remove('hidden');
@@ -442,6 +566,7 @@
 
             const formData = new FormData();
             formData.append("user_name", document.getElementById('user_name').value);
+            formData.append("daily_user_id", document.getElementById('user_name').selectedOptions[0].dataset.userId);
             formData.append("task_name", document.getElementById('task_name').value);
             formData.append("duration_minutes", durationMinutes);
             formData.append("before_photo", finalBeforePhoto);
@@ -465,6 +590,15 @@
                 const data = await res.json();
                 
                 if(data.status === "success") {
+                    if (data.daily_state) {
+                        try {
+                            localStorage.setItem(`retohogar:daily-tasks:${data.daily_state.user_id}`, JSON.stringify(data.daily_state));
+                        } catch (storageError) {
+                            console.warn('No se pudo guardar la cuota diaria en localStorage:', storageError);
+                        }
+                        renderDailyTasks(data.daily_state, true);
+                        dailyTasksReady = true;
+                    }
                     progressBar.style.width = "100%";
                     setTimeout(() => {
                         loadingBox.classList.add('hidden');
@@ -504,6 +638,7 @@
 
         function resetApp() {
             startTime = null;
+            document.getElementById('user_name').disabled = false;
             document.getElementById('result-box').classList.add('hidden');
             document.getElementById('loading-box').classList.add('hidden');
             document.getElementById('step-2').classList.add('hidden');
@@ -521,6 +656,7 @@
                 btn2.disabled = false;
             }
             document.getElementById('progress-bar').style.width = "25%";
+            loadDailyTasks();
         }
 
         async function loadLeaderboard(periodo) {

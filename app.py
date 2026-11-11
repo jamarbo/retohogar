@@ -6,6 +6,9 @@ import traceback
 import smtplib
 import asyncio
 import random
+import hashlib
+import threading
+import unicodedata
 from datetime import datetime, timedelta, date
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request, Cookie, Response, BackgroundTasks
@@ -66,6 +69,17 @@ TASK_POINTS = {
     "Tender la cama": 40
 }
 
+DAILY_USERS = {
+    "jaiver-martinez": "Jaiver Martínez",
+    "gabriela-martinez": "Gabriela Martínez",
+    "valeria-martinez": "Valeria Martínez",
+    "elizabeth-parra": "Elizabeth Parra",
+}
+DAILY_TASK_COUNT = 10
+DAILY_BONUS_POINTS = 500
+DAILY_BONUS_TASK_NAME = "Bono diario (10/10 tareas)"
+DAILY_LEDGER_LOCK = threading.RLock()
+
 class MoneyRequest(BaseModel):
     user_name: str
     amount: float
@@ -76,6 +90,140 @@ class AdminActionRequest(BaseModel):
 
 def get_colombia_now():
     return datetime.utcnow() - timedelta(hours=5)
+
+def _normalize_daily_user(value):
+    normalized = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+    return "".join(character for character in normalized.lower() if character.isalnum())
+
+def get_daily_assignment(user_id, target_date):
+    if user_id not in DAILY_USERS:
+        raise HTTPException(status_code=404, detail="Usuario no válido.")
+
+    seed = hashlib.sha256(f"{user_id}:{target_date.isoformat()}".encode("utf-8")).digest()
+    rng = random.Random(int.from_bytes(seed, "big"))
+    task_names = rng.sample(list(TASK_POINTS), min(DAILY_TASK_COUNT, len(TASK_POINTS)))
+    return [{"name": name, "points": TASK_POINTS[name]} for name in task_names]
+
+def get_daily_sheet():
+    if not SHEET_NAME:
+        raise RuntimeError("SHEET_NAME no está configurado.")
+    creds = get_google_credentials()
+    return gspread.authorize(creds).open(SHEET_NAME).sheet1
+
+def get_daily_state_from_rows(user_id, target_date, rows, tasks):
+    user_name = DAILY_USERS[user_id]
+    normalized_user = _normalize_daily_user(user_name)
+    task_names = {task["name"] for task in tasks}
+    completed_tasks = set()
+    bonus_awarded = False
+
+    for row in rows[1:]:
+        if len(row) < 6 or _normalize_daily_user(str(row[1]).strip()) != normalized_user:
+            continue
+        try:
+            row_date = datetime.strptime(str(row[0]).strip()[:10], "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if row_date != target_date:
+            continue
+
+        task_name = str(row[2]).strip()
+        if task_name == DAILY_BONUS_TASK_NAME:
+            bonus_awarded = True
+            continue
+        if task_name not in task_names:
+            continue
+        if str(row[4]).strip().lower() in ["sí", "si", "true", "1", "yes"] and (
+            len(row) <= 11 or str(row[11]).strip().lower() != "rechazado"
+        ):
+            completed_tasks.add(task_name)
+
+    completed_count = len(completed_tasks)
+    return {
+        "status": "success",
+        "user_id": user_id,
+        "date": target_date.isoformat(),
+        "tasks": [
+            {**task, "completed": task["name"] in completed_tasks}
+            for task in tasks
+        ],
+        "completed_tasks": sorted(completed_tasks),
+        "completed_count": completed_count,
+        "total_tasks": len(tasks),
+        "remaining_count": max(0, len(tasks) - completed_count),
+        "bonus_awarded": bonus_awarded,
+        "bonus_points": DAILY_BONUS_POINTS,
+    }
+
+def _append_daily_bonus_if_earned(sheet, rows, user_id, target_date, state):
+    if state["completed_count"] < state["total_tasks"] or state["bonus_awarded"]:
+        return state
+
+    user_name = DAILY_USERS[user_id]
+    sheet.append_row([
+        f"{target_date.isoformat()} 23:59:59",
+        user_name,
+        DAILY_BONUS_TASK_NAME,
+        0,
+        "Sí",
+        DAILY_BONUS_POINTS,
+        DAILY_BONUS_POINTS,
+        "Bono automático por completar las 10 tareas diarias.",
+        "#",
+        "#",
+        0,
+        "Completado",
+    ])
+    rows.append([
+        target_date.isoformat(),
+        user_name,
+        DAILY_BONUS_TASK_NAME,
+        0,
+        "Sí",
+        DAILY_BONUS_POINTS,
+        DAILY_BONUS_POINTS,
+        "Bono automático por completar las 10 tareas diarias.",
+        "#",
+        "#",
+        0,
+        "Completado",
+    ])
+    state["bonus_awarded"] = True
+    return state
+
+def get_daily_task_state(user_id, target_date=None):
+    target_date = target_date or get_colombia_now().date()
+    tasks = get_daily_assignment(user_id, target_date)
+    with DAILY_LEDGER_LOCK:
+        sheet = get_daily_sheet()
+        rows = sheet.get_all_values()
+        state = get_daily_state_from_rows(user_id, target_date, rows, tasks)
+        return _append_daily_bonus_if_earned(sheet, rows, user_id, target_date, state)
+
+def persist_daily_task_result(user_id, task_name, target_date, row):
+    tasks = get_daily_assignment(user_id, target_date)
+    task_names = {task["name"] for task in tasks}
+    if task_name not in task_names:
+        raise HTTPException(status_code=400, detail="La tarea no pertenece a la cuota diaria asignada.")
+
+    with DAILY_LEDGER_LOCK:
+        sheet = get_daily_sheet()
+        rows = sheet.get_all_values()
+        state = get_daily_state_from_rows(user_id, target_date, rows, tasks)
+        if task_name in state["completed_tasks"]:
+            raise HTTPException(status_code=409, detail="Esta tarea ya está completada para hoy.")
+
+        sheet.append_row(row)
+        if str(row[4]).strip().lower() in ["sí", "si", "true", "1", "yes"]:
+            state["completed_tasks"].append(task_name)
+            state["completed_tasks"] = sorted(set(state["completed_tasks"]))
+            state["completed_count"] = len(state["completed_tasks"])
+            state["remaining_count"] = max(0, state["total_tasks"] - state["completed_count"])
+            state["tasks"] = [
+                {**task, "completed": task["name"] in state["completed_tasks"]}
+                for task in tasks
+            ]
+        return _append_daily_bonus_if_earned(sheet, rows, user_id, target_date, state)
 
 def get_google_credentials():
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")    
@@ -167,25 +315,9 @@ def guardar_en_sheet(fila):
     except Exception as e:
         print(f"❌ Error al guardar en Sheets: {e}")
 
-def process_background_uploads_and_sheet(user_name, task_name, duration_minutes, eval_data, max_score, before_filename, before_bytes, after_filename, after_bytes, now_colombia):
-    url_foto_antes = subir_foto_drive_usuario(user_name, before_filename, before_bytes)
-    url_foto_despues = subir_foto_drive_usuario(user_name, after_filename, after_bytes)
-    
-    guardar_en_sheet([
-        now_colombia,
-        user_name,
-        task_name,
-        duration_minutes,
-        "Sí" if eval_data.get('completado') else "No",
-        eval_data.get('puntos', 0),
-        max_score,
-        eval_data.get('observaciones', ''),
-        url_foto_antes,
-        url_foto_despues,
-        0,
-        "Completado"
-    ])
-    print(f" BACKGROUND TASK: Fotos e información de '{task_name}' para {user_name} persistidas exitosamente.")
+def process_background_uploads(user_name, before_filename, before_bytes, after_filename, after_bytes):
+    subir_foto_drive_usuario(user_name, before_filename, before_bytes)
+    subir_foto_drive_usuario(user_name, after_filename, after_bytes)
 
 def obtener_puntos_semana(usuario_keyword: str) -> int:
     try:
@@ -289,6 +421,16 @@ async def get_suggested_tasks(user_name: str):
     except Exception as e:
         print(f"❌ Error obteniendo tareas sugeridas: {e}")
         return {"status": "error", "message": str(e)}
+
+@app.get("/api/tasks/daily/{user_id}")
+async def get_daily_tasks(user_id: str):
+    try:
+        return get_daily_task_state(user_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error obteniendo cuota diaria para {user_id}: {e}")
+        raise HTTPException(status_code=503, detail="No se pudo consultar la cuota diaria en Google Sheets.") from e
 
 @app.post("/api/validate-money-request")
 async def validate_money_request(req: MoneyRequest):
@@ -545,6 +687,7 @@ async def process_money_request(req: AdminActionRequest, admin_user: str = Cooki
 @app.post("/api/evaluate-task")
 async def evaluate_task(
     background_tasks: BackgroundTasks,
+    daily_user_id: str = Form(...),
     user_name: str = Form(...),
     task_name: str = Form(...),
     duration_minutes: float = Form(...),
@@ -564,6 +707,18 @@ async def evaluate_task(
     used_model = None
 
     try:
+        if daily_user_id not in DAILY_USERS or (
+            _normalize_daily_user(user_name) != _normalize_daily_user(DAILY_USERS[daily_user_id])
+        ):
+            raise HTTPException(status_code=400, detail="El usuario seleccionado no es válido.")
+
+        task_day = get_colombia_now().date()
+        daily_state = get_daily_task_state(daily_user_id, task_day)
+        if task_name not in {task["name"] for task in daily_state["tasks"]}:
+            raise HTTPException(status_code=400, detail="La tarea no pertenece a la cuota diaria asignada.")
+        if task_name in daily_state["completed_tasks"]:
+            raise HTTPException(status_code=409, detail="Esta tarea ya está completada para hoy.")
+
         timestamp = int(time.time())
         
         before_bytes = await before_photo.read()
@@ -644,18 +799,33 @@ async def evaluate_task(
 
         now_colombia = get_colombia_now().strftime("%Y-%m-%d %H:%M:%S")
 
-        background_tasks.add_task(
-            process_background_uploads_and_sheet,
-            user_name,
+        daily_state = persist_daily_task_result(
+            daily_user_id,
             task_name,
-            duration_minutes,
-            eval_data,
-            max_score,
+            task_day,
+            [
+                now_colombia,
+                user_name,
+                task_name,
+                duration_minutes,
+                "Sí" if eval_data.get("completado") else "No",
+                eval_data.get("puntos", 0),
+                max_score,
+                eval_data.get("observaciones", ""),
+                url_foto_antes,
+                url_foto_despues,
+                0,
+                "Completado",
+            ],
+        )
+
+        background_tasks.add_task(
+            process_background_uploads,
+            user_name,
             before_filename,
             before_bytes,
             after_filename,
             after_bytes,
-            now_colombia
         )
 
         total_duration = round(time.time() - start_time, 2)
@@ -672,9 +842,12 @@ async def evaluate_task(
             "observaciones": eval_data.get('observaciones', ''),
             "modelo_usado": used_model,
             "before_url": url_foto_antes,
-            "after_url": url_foto_despues
+            "after_url": url_foto_despues,
+            "daily_state": daily_state,
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         total_duration = round(time.time() - start_time, 2)
         print(f"❌ Error crítico en evaluate_task tras {total_duration}s: {e}")
