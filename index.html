@@ -6,31 +6,244 @@
     <title>Reto del Hogar</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
+    <style>
+        @keyframes welcome-backdrop-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes welcome-card-in {
+            0% { opacity: 0; transform: translateY(28px) scale(.92); }
+            70% { opacity: 1; transform: translateY(-4px) scale(1.015); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes welcome-glow-pulse {
+            0%, 100% { opacity: .48; transform: scale(.9); }
+            50% { opacity: .85; transform: scale(1.12); }
+        }
+
+        @keyframes welcome-star-float {
+            0%, 100% { opacity: .35; transform: translate3d(0, 0, 0) rotate(0deg) scale(.8); }
+            50% { opacity: 1; transform: translate3d(8px, -18px, 0) rotate(18deg) scale(1.2); }
+        }
+
+        @keyframes welcome-copy-in {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes welcome-button-in {
+            0% { opacity: 0; transform: translateY(14px) scale(.96); }
+            75% { opacity: 1; transform: translateY(-2px) scale(1.02); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes welcome-button-shine {
+            0%, 55% { left: -60%; }
+            100% { left: 125%; }
+        }
+
+        @keyframes welcome-confetti-burst {
+            0% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+            80% { opacity: 1; }
+            100% { opacity: 0; transform: translate3d(var(--confetti-x), var(--confetti-y), 0) rotate(var(--confetti-rotation)) scale(.7); }
+        }
+
+        @keyframes task-star-burst {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(.2) rotate(0); }
+            18% { opacity: 1; transform: translate(-50%, -50%) scale(1.25) rotate(25deg); }
+            100% {
+                opacity: 0;
+                transform: translate(calc(-50% + var(--star-x)), calc(-50% + var(--star-y))) scale(.45) rotate(var(--star-rotation));
+            }
+        }
+
+        .welcome-overlay {
+            isolation: isolate;
+            overflow: hidden;
+            box-sizing: border-box;
+            width: 100%;
+            background:
+                radial-gradient(ellipse at 50% 42%, rgba(245, 158, 11, .13), transparent 48%),
+                rgba(2, 6, 23, .94);
+            animation: welcome-backdrop-in .45s ease-out both;
+        }
+
+        .welcome-glow {
+            position: absolute;
+            z-index: -1;
+            width: min(72vw, 34rem);
+            aspect-ratio: 1;
+            border-radius: 9999px;
+            filter: blur(72px);
+            pointer-events: none;
+            animation: welcome-glow-pulse 5s ease-in-out infinite;
+        }
+
+        .welcome-glow-one {
+            top: -24%;
+            left: -18%;
+            background: rgba(217, 70, 239, .24);
+        }
+
+        .welcome-glow-two {
+            right: -24%;
+            bottom: -34%;
+            background: rgba(14, 165, 233, .22);
+            animation-delay: -2.5s;
+        }
+
+        .welcome-star {
+            position: absolute;
+            color: #fde68a;
+            font-size: var(--star-size, 1rem);
+            left: var(--star-left);
+            top: var(--star-top);
+            opacity: 0;
+            pointer-events: none;
+            animation: welcome-star-float var(--star-duration, 3.8s) ease-in-out var(--star-delay, 0s) infinite;
+        }
+
+        .welcome-card {
+            box-sizing: border-box;
+            width: min(100%, 32rem);
+            min-width: 0;
+            max-width: 100%;
+            max-height: calc(100vh - 2rem);
+            max-height: calc(100dvh - 2rem);
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, .16);
+            background: linear-gradient(145deg, rgba(30, 41, 59, .96), rgba(15, 23, 42, .96));
+            box-shadow: 0 28px 100px rgba(0, 0, 0, .55), 0 0 70px rgba(245, 158, 11, .1);
+            animation: welcome-card-in .72s cubic-bezier(.2, .8, .2, 1) .08s both;
+        }
+
+        .welcome-copy {
+            opacity: 0;
+            animation: welcome-copy-in .55s ease-out .42s both;
+        }
+
+        .welcome-bonus {
+            border: 1px solid rgba(251, 191, 36, .34);
+            background: linear-gradient(125deg, rgba(245, 158, 11, .16), rgba(217, 70, 239, .1), rgba(14, 165, 233, .12));
+            box-shadow: inset 0 1px rgba(255, 255, 255, .06);
+        }
+
+        .welcome-start-button {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, .4);
+            background: linear-gradient(100deg, #fbbf24, #fb923c 48%, #facc15);
+            box-shadow: 0 10px 30px rgba(245, 158, 11, .27), inset 0 1px rgba(255, 255, 255, .5);
+            opacity: 0;
+            animation: welcome-button-in .6s cubic-bezier(.2, .8, .2, 1) .8s both;
+        }
+
+        .welcome-start-button::after {
+            position: absolute;
+            z-index: -1;
+            top: -50%;
+            bottom: -50%;
+            width: 34%;
+            content: "";
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent);
+            transform: skewX(-20deg);
+            animation: welcome-button-shine 3.4s ease-in-out 1.4s infinite;
+        }
+
+        .welcome-start-button:hover {
+            box-shadow: 0 14px 36px rgba(245, 158, 11, .42), inset 0 1px rgba(255, 255, 255, .6);
+        }
+
+        .welcome-confetti {
+            position: absolute;
+            z-index: 3;
+            top: 50%;
+            left: 50%;
+            width: var(--confetti-size);
+            height: calc(var(--confetti-size) * 1.65);
+            border-radius: var(--confetti-radius, 2px);
+            background: var(--confetti-color);
+            pointer-events: none;
+            animation: welcome-confetti-burst var(--confetti-duration) cubic-bezier(.12, .62, .32, 1) var(--confetti-delay) both;
+        }
+
+        .task-star {
+            position: absolute;
+            left: var(--star-origin-x);
+            top: var(--star-origin-y);
+            color: var(--star-color);
+            font-size: var(--star-size);
+            line-height: 1;
+            text-shadow: 0 0 12px currentColor;
+            animation: task-star-burst 1.25s cubic-bezier(.12, .72, .24, 1) var(--star-delay) both;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .welcome-overlay,
+            .welcome-glow,
+            .welcome-star,
+            .welcome-card,
+            .welcome-copy,
+            .welcome-start-button,
+            .welcome-start-button::after,
+            .welcome-confetti,
+            .task-star {
+                animation: none !important;
+                opacity: 1;
+                transform: none;
+            }
+        }
+    </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-start p-4">
-    <div id="welcome-splash" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="welcome-title" aria-describedby="welcome-description">
-        <div class="w-full max-w-md rounded-3xl border border-amber-400/40 bg-slate-800 p-7 text-center shadow-2xl shadow-amber-950/30">
-            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/15 text-4xl" aria-hidden="true">🧹</div>
-            <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-amber-300">Reto del Hogar</p>
-            <h1 id="welcome-title" class="text-3xl font-black text-white">¡Un nuevo reto te espera!</h1>
-            <p id="welcome-description" class="mt-3 text-sm leading-relaxed text-slate-300">
-                Cada día tendrás una asignación automática de hasta <strong class="text-amber-300">10 tareas distintas</strong> para completar.
-            </p>
-            <div class="my-6 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
-                <span class="text-3xl" aria-hidden="true">⭐</span>
-                <p class="mt-2 text-lg font-extrabold text-amber-300">Bono de 500 puntos</p>
-                <p class="mt-1 text-xs leading-relaxed text-slate-300">Completa todas las tareas asignadas para recibirlo automáticamente.</p>
+    <div id="welcome-splash" class="welcome-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="welcome-title" aria-describedby="welcome-description">
+        <div class="welcome-glow welcome-glow-one" aria-hidden="true"></div>
+        <div class="welcome-glow welcome-glow-two" aria-hidden="true"></div>
+        <div id="welcome-starfield" class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true"></div>
+        <div id="welcome-confetti-layer" class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true"></div>
+        <section class="welcome-card relative z-[2] max-w-lg rounded-[2rem] p-6 text-center sm:p-9">
+            <div class="welcome-copy">
+                <div class="mx-auto mb-5 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl border border-amber-200/30 bg-gradient-to-br from-amber-300 via-orange-400 to-fuchsia-500 text-4xl shadow-lg shadow-orange-500/20" aria-hidden="true">
+                    <span class="drop-shadow">🧹</span>
+                </div>
+                <p class="mb-2 text-[11px] font-black uppercase tracking-[.28em] text-amber-200">Reto del Hogar</p>
+                <h1 id="welcome-title" class="bg-gradient-to-r from-amber-200 via-white to-fuchsia-200 bg-clip-text text-3xl font-black leading-tight text-transparent sm:text-4xl">
+                    ¡Hoy puedes con todo!
+                </h1>
+                <p id="welcome-description" class="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-slate-300 sm:text-base">
+                    Tu reto se renueva cada día con hasta <strong class="text-amber-200">10 tareas distintas</strong>, asignadas automáticamente para ti.
+                </p>
+                <div class="welcome-bonus my-6 rounded-2xl p-4 sm:p-5">
+                    <div class="flex items-center justify-center gap-3">
+                        <span class="text-3xl drop-shadow-[0_0_12px_rgba(250,204,21,.7)]" aria-hidden="true">⭐</span>
+                        <p class="text-lg font-black text-amber-100 sm:text-xl">Bono de 500 puntos</p>
+                    </div>
+                    <p class="mt-2 text-xs leading-relaxed text-slate-200 sm:text-sm">Completa todas las tareas de tu cuota diaria y el bono se acreditará automáticamente.</p>
+                </div>
+                <p class="mb-5 text-xs font-semibold tracking-wide text-cyan-200">Un paso a la vez. ¡Tu hogar y tu racha te lo agradecerán!</p>
             </div>
-            <button id="welcome-start" type="button" class="w-full rounded-xl bg-amber-500 px-5 py-3 font-extrabold text-slate-950 shadow-lg shadow-amber-950/30 transition hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2 focus:ring-offset-slate-800">
-                Comenzar Reto
+            <button id="welcome-start" type="button" class="welcome-start-button w-full rounded-xl px-5 py-3.5 text-base font-black tracking-wide text-slate-950 transition duration-200 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-amber-200 focus:ring-offset-2 focus:ring-offset-slate-900 sm:text-lg">
+                <span class="relative z-[1]">Comenzar Reto <span aria-hidden="true">→</span></span>
             </button>
-        </div>
+        </section>
     </div>
+    <audio id="background-music" loop preload="none" aria-hidden="true"></audio>
+    <div id="task-celebration-layer" class="pointer-events-none fixed inset-0 z-[90] overflow-hidden" aria-hidden="true"></div>
+    <p id="task-celebration-status" class="sr-only" role="status" aria-live="polite"></p>
 
     <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700 relative">
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-bold text-amber-400">🧹 Reto del Hogar <span id="app-env-badge" class="ml-2 text-[10px] bg-slate-700 text-amber-100 px-2 py-0.5 rounded-full font-normal hidden"></span></h1>
-            <a href="/admin/login" target="_blank" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg text-slate-300 font-medium transition">Panel Admin</a>
+            <div class="flex items-center gap-2">
+                <button id="music-toggle" type="button" aria-label="Activar música de fondo" aria-pressed="false" onclick="toggleBackgroundMusic()" class="rounded-lg border border-slate-600 bg-slate-700 px-2.5 py-1 text-[10px] font-semibold text-amber-200 transition hover:border-amber-400 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-400">
+                    <span id="music-toggle-icon" aria-hidden="true">♫</span>
+                    <span id="music-toggle-label">Música: apagada</span>
+                </button>
+                <a href="/admin/login" target="_blank" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg text-slate-300 font-medium transition">Panel Admin</a>
+            </div>
         </div>
         
         <!-- Pestañas -->
@@ -237,42 +450,189 @@
         let dailyTasksReady = false;
         let dailyTasksRequestId = 0;
 
-        function getColombiaDateKey() {
-            return new Intl.DateTimeFormat('en-CA', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                timeZone: 'America/Bogota'
-            }).format(new Date());
-        }
+        function createWelcomeParticles() {
+            const starfield = document.getElementById('welcome-starfield');
+            const confettiLayer = document.getElementById('welcome-confetti-layer');
+            const starFragment = document.createDocumentFragment();
+            const confettiFragment = document.createDocumentFragment();
+            const confettiColors = ['#facc15', '#fb923c', '#f472b6', '#c084fc', '#38bdf8', '#34d399'];
 
-        function showDailyWelcome() {
-            const splash = document.getElementById('welcome-splash');
-            const startButton = document.getElementById('welcome-start');
-            const storageKey = `retohogar:welcome-seen:${getColombiaDateKey()}`;
-            let alreadySeen = false;
-            try {
-                alreadySeen = localStorage.getItem(storageKey) === 'true';
-            } catch (error) {
-                console.warn('No se pudo consultar el estado de bienvenida:', error);
+            for (let index = 0; index < 18; index++) {
+                const star = document.createElement('span');
+                star.className = 'welcome-star';
+                star.textContent = index % 4 === 0 ? '✦' : '✧';
+                star.style.setProperty('--star-left', `${Math.random() * 96 + 2}%`);
+                star.style.setProperty('--star-top', `${Math.random() * 92 + 4}%`);
+                star.style.setProperty('--star-size', `${Math.random() * 1.1 + 0.55}rem`);
+                star.style.setProperty('--star-duration', `${Math.random() * 2.5 + 3}s`);
+                star.style.setProperty('--star-delay', `${Math.random() * 1.2}s`);
+                starFragment.appendChild(star);
             }
 
-            if (alreadySeen) return;
+            for (let index = 0; index < 38; index++) {
+                const piece = document.createElement('span');
+                const angle = (Math.PI * 2 * index / 38) + (Math.random() - 0.5) * 0.3;
+                const distance = Math.random() * 240 + 110;
+                const isDot = Math.random() > 0.72;
+                piece.className = 'welcome-confetti';
+                piece.style.setProperty('--confetti-x', `${Math.cos(angle) * distance}px`);
+                piece.style.setProperty('--confetti-y', `${Math.sin(angle) * distance}px`);
+                piece.style.setProperty('--confetti-rotation', `${Math.random() * 900 - 450}deg`);
+                piece.style.setProperty('--confetti-size', `${Math.random() * 5 + 5}px`);
+                piece.style.setProperty('--confetti-radius', isDot ? '9999px' : '2px');
+                piece.style.setProperty('--confetti-color', confettiColors[index % confettiColors.length]);
+                piece.style.setProperty('--confetti-duration', `${Math.random() * 0.8 + 1.35}s`);
+                piece.style.setProperty('--confetti-delay', `${Math.random() * 0.18}s`);
+                confettiFragment.appendChild(piece);
+            }
+
+            starfield.replaceChildren(starFragment);
+            confettiLayer.replaceChildren(confettiFragment);
+            window.setTimeout(() => confettiLayer.replaceChildren(), 2600);
+        }
+
+        function createBackgroundTrack() {
+            const sampleRate = 22050;
+            const durationSeconds = 8;
+            const sampleCount = sampleRate * durationSeconds;
+            const beatSeconds = durationSeconds / 16;
+            const melody = [523.25, 659.25, 783.99, 659.25, 587.33, 783.99, 880, 783.99, 523.25, 659.25, 783.99, 987.77, 880, 783.99, 659.25, 587.33];
+            const bass = [130.81, 164.81, 196, 146.83];
+            const buffer = new ArrayBuffer(44 + sampleCount * 2);
+            const view = new DataView(buffer);
+            const writeText = (offset, text) => {
+                for (let index = 0; index < text.length; index++) view.setUint8(offset + index, text.charCodeAt(index));
+            };
+
+            writeText(0, 'RIFF');
+            view.setUint32(4, 36 + sampleCount * 2, true);
+            writeText(8, 'WAVE');
+            writeText(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeText(36, 'data');
+            view.setUint32(40, sampleCount * 2, true);
+
+            for (let index = 0; index < sampleCount; index++) {
+                const time = index / sampleRate;
+                const beatPosition = time % beatSeconds;
+                const melodyEnvelope = Math.min(1, beatPosition / .025) * Math.max(0, 1 - beatPosition / (beatSeconds * .92));
+                const melodyFrequency = melody[Math.floor(time / beatSeconds) % melody.length];
+                const bassFrequency = bass[Math.floor(time / (durationSeconds / bass.length)) % bass.length];
+                const bassEnvelope = .5 + .5 * Math.sin(Math.PI * (time % (durationSeconds / bass.length)) / (durationSeconds / bass.length));
+                const melodyTone = Math.sin(2 * Math.PI * melodyFrequency * time) * .17 +
+                    Math.sin(4 * Math.PI * melodyFrequency * time) * .035;
+                const bassTone = Math.sin(2 * Math.PI * bassFrequency * time) * .07 * bassEnvelope;
+                const fade = Math.min(1, time / .08, (durationSeconds - time) / .08);
+                const sample = Math.max(-1, Math.min(1, (melodyTone * melodyEnvelope + bassTone) * fade));
+                view.setInt16(44 + index * 2, sample * 32767, true);
+            }
+
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        let backgroundTrackUrl = null;
+
+        async function startBackgroundMusic() {
+            const audio = document.getElementById('background-music');
+            const toggle = document.getElementById('music-toggle');
+            const label = document.getElementById('music-toggle-label');
+            const icon = document.getElementById('music-toggle-icon');
+            try {
+                if (!audio.src) {
+                    backgroundTrackUrl = URL.createObjectURL(createBackgroundTrack());
+                    audio.src = backgroundTrackUrl;
+                }
+                await audio.play();
+                toggle.setAttribute('aria-pressed', 'true');
+                toggle.setAttribute('aria-label', 'Desactivar música de fondo');
+                label.textContent = 'Música: activa';
+                icon.textContent = '♫';
+            } catch (error) {
+                console.warn('El navegador no permitió iniciar la música:', error);
+                toggle.setAttribute('aria-pressed', 'false');
+                toggle.setAttribute('aria-label', 'Reintentar música de fondo');
+                label.textContent = 'Música: reintentar';
+            }
+        }
+
+        function stopBackgroundMusic() {
+            const audio = document.getElementById('background-music');
+            audio.pause();
+            document.getElementById('music-toggle').setAttribute('aria-pressed', 'false');
+            document.getElementById('music-toggle').setAttribute('aria-label', 'Activar música de fondo');
+            document.getElementById('music-toggle-label').textContent = 'Música: apagada';
+        }
+
+        function toggleBackgroundMusic() {
+            const audio = document.getElementById('background-music');
+            if (audio.paused) {
+                startBackgroundMusic();
+            } else {
+                stopBackgroundMusic();
+            }
+        }
+
+        function showWelcomeSplash() {
+            const splash = document.getElementById('welcome-splash');
+            const startButton = document.getElementById('welcome-start');
             splash.classList.remove('hidden');
             document.body.classList.add('overflow-hidden');
+            createWelcomeParticles();
             startButton.focus();
             startButton.addEventListener('click', () => {
-                try {
-                    localStorage.setItem(storageKey, 'true');
-                } catch (error) {
-                    console.warn('No se pudo guardar el estado de bienvenida:', error);
-                }
+                startBackgroundMusic();
                 splash.classList.add('hidden');
                 document.body.classList.remove('overflow-hidden');
+                document.getElementById('welcome-starfield').replaceChildren();
+                document.getElementById('welcome-confetti-layer').replaceChildren();
             }, { once: true });
         }
 
-        showDailyWelcome();
+        function triggerTaskCelebration() {
+            const layer = document.getElementById('task-celebration-layer');
+            const status = document.getElementById('task-celebration-status');
+            status.textContent = '¡Objetivo completado! ¡Excelente trabajo!';
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+            layer.replaceChildren();
+            const result = document.getElementById('result-box').getBoundingClientRect();
+            const originX = result.left + result.width / 2;
+            const originY = result.top + Math.min(result.height / 2, 100);
+            const colors = ['#fde047', '#fb923c', '#f472b6', '#c084fc', '#38bdf8', '#6ee7b7'];
+            const fragment = document.createDocumentFragment();
+
+            for (let index = 0; index < 32; index++) {
+                const star = document.createElement('span');
+                const angle = Math.PI * 2 * index / 32 + (Math.random() - .5) * .24;
+                const distance = Math.random() * 150 + 70;
+                star.className = 'task-star';
+                star.textContent = index % 4 === 0 ? '✦' : '★';
+                star.style.setProperty('--star-origin-x', `${originX}px`);
+                star.style.setProperty('--star-origin-y', `${originY}px`);
+                star.style.setProperty('--star-x', `${Math.cos(angle) * distance}px`);
+                star.style.setProperty('--star-y', `${Math.sin(angle) * distance}px`);
+                star.style.setProperty('--star-rotation', `${Math.random() * 300 - 150}deg`);
+                star.style.setProperty('--star-size', `${Math.random() * 18 + 12}px`);
+                star.style.setProperty('--star-color', colors[index % colors.length]);
+                star.style.setProperty('--star-delay', `${Math.random() * .12}s`);
+                fragment.appendChild(star);
+            }
+
+            layer.appendChild(fragment);
+            window.setTimeout(() => layer.replaceChildren(), 1700);
+        }
+
+        window.addEventListener('pagehide', () => {
+            if (backgroundTrackUrl) URL.revokeObjectURL(backgroundTrackUrl);
+        }, { once: true });
+
+        showWelcomeSplash();
 
         function renderDailyTasks(state, isLive) {
             const taskSelect = document.getElementById('task_name');
@@ -590,6 +950,9 @@
                 const data = await res.json();
                 
                 if(data.status === "success") {
+                    if (data.completado === true) {
+                        triggerTaskCelebration();
+                    }
                     if (data.daily_state) {
                         try {
                             localStorage.setItem(`retohogar:daily-tasks:${data.daily_state.user_id}`, JSON.stringify(data.daily_state));
