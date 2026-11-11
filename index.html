@@ -538,21 +538,27 @@
 
         let backgroundTrackUrl = null;
 
+        function syncMusicToggle() {
+            const audio = document.getElementById('background-music');
+            const toggle = document.getElementById('music-toggle');
+            const isPlaying = !audio.paused;
+            toggle.setAttribute('aria-pressed', String(isPlaying));
+            toggle.setAttribute('aria-label', isPlaying ? 'Desactivar música de fondo' : 'Activar música de fondo');
+            document.getElementById('music-toggle-label').textContent = isPlaying ? 'Música: activa' : 'Música: apagada';
+        }
+
         async function startBackgroundMusic() {
             const audio = document.getElementById('background-music');
             const toggle = document.getElementById('music-toggle');
             const label = document.getElementById('music-toggle-label');
-            const icon = document.getElementById('music-toggle-icon');
             try {
                 if (!audio.src) {
                     backgroundTrackUrl = URL.createObjectURL(createBackgroundTrack());
                     audio.src = backgroundTrackUrl;
+                    audio.volume = .2;
                 }
                 await audio.play();
-                toggle.setAttribute('aria-pressed', 'true');
-                toggle.setAttribute('aria-label', 'Desactivar música de fondo');
-                label.textContent = 'Música: activa';
-                icon.textContent = '♫';
+                syncMusicToggle();
             } catch (error) {
                 console.warn('El navegador no permitió iniciar la música:', error);
                 toggle.setAttribute('aria-pressed', 'false');
@@ -561,12 +567,13 @@
             }
         }
 
+        document.getElementById('background-music').addEventListener('play', syncMusicToggle);
+        document.getElementById('background-music').addEventListener('pause', syncMusicToggle);
+
         function stopBackgroundMusic() {
             const audio = document.getElementById('background-music');
             audio.pause();
-            document.getElementById('music-toggle').setAttribute('aria-pressed', 'false');
-            document.getElementById('music-toggle').setAttribute('aria-label', 'Activar música de fondo');
-            document.getElementById('music-toggle-label').textContent = 'Música: apagada';
+            syncMusicToggle();
         }
 
         function toggleBackgroundMusic() {
