@@ -66,8 +66,8 @@
             box-sizing: border-box;
             width: 100%;
             background:
-                radial-gradient(ellipse at 50% 42%, rgba(245, 158, 11, .13), transparent 48%),
-                rgba(2, 6, 23, .94);
+                radial-gradient(ellipse at 50% 42%, rgba(99, 102, 241, .18), transparent 55%),
+                rgba(248, 250, 252, .96);
             animation: welcome-backdrop-in .45s ease-out both;
         }
 
@@ -114,9 +114,9 @@
             max-height: calc(100vh - 2rem);
             max-height: calc(100dvh - 2rem);
             overflow-y: auto;
-            border: 1px solid rgba(255, 255, 255, .16);
-            background: linear-gradient(145deg, rgba(30, 41, 59, .96), rgba(15, 23, 42, .96));
-            box-shadow: 0 28px 100px rgba(0, 0, 0, .55), 0 0 70px rgba(245, 158, 11, .1);
+            border: 1px solid rgba(99, 102, 241, .2);
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            box-shadow: 0 28px 70px rgba(79, 70, 229, .16), 0 8px 24px rgba(15, 23, 42, .08);
             animation: welcome-card-in .72s cubic-bezier(.2, .8, .2, 1) .08s both;
         }
 
@@ -126,9 +126,9 @@
         }
 
         .welcome-bonus {
-            border: 1px solid rgba(251, 191, 36, .34);
-            background: linear-gradient(125deg, rgba(245, 158, 11, .16), rgba(217, 70, 239, .1), rgba(14, 165, 233, .12));
-            box-shadow: inset 0 1px rgba(255, 255, 255, .06);
+            border: 1px solid rgba(99, 102, 241, .2);
+            background: linear-gradient(125deg, #eef2ff, #faf5ff, #fdf2f8);
+            box-shadow: inset 0 1px rgba(255, 255, 255, .8);
         }
 
         .welcome-start-button {
@@ -136,8 +136,8 @@
             isolation: isolate;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, .4);
-            background: linear-gradient(100deg, #fbbf24, #fb923c 48%, #facc15);
-            box-shadow: 0 10px 30px rgba(245, 158, 11, .27), inset 0 1px rgba(255, 255, 255, .5);
+            background: linear-gradient(100deg, #4338ca, #6d28d9 50%, #be185d);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, .28), inset 0 1px rgba(255, 255, 255, .35);
             opacity: 0;
             animation: welcome-button-in .6s cubic-bezier(.2, .8, .2, 1) .8s both;
         }
@@ -155,7 +155,7 @@
         }
 
         .welcome-start-button:hover {
-            box-shadow: 0 14px 36px rgba(245, 158, 11, .42), inset 0 1px rgba(255, 255, 255, .6);
+            box-shadow: 0 14px 36px rgba(99, 102, 241, .4), inset 0 1px rgba(255, 255, 255, .45);
         }
 
         .welcome-confetti {
@@ -187,8 +187,7 @@
         }
 
         .welcome-title {
-            color: #fff7cc;
-            text-shadow: 0 2px 3px #020617, 0 0 10px rgba(2, 6, 23, .95);
+            color: #1e1b4b;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -208,7 +207,7 @@
         }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-start p-4">
+<body class="bg-gradient-to-br from-sky-50 via-indigo-50 to-purple-50 text-slate-800 min-h-screen flex flex-col items-center justify-start p-4">
     <div id="welcome-splash" class="welcome-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="welcome-title" aria-describedby="welcome-description">
         <div class="welcome-glow welcome-glow-one" aria-hidden="true"></div>
         <div class="welcome-glow welcome-glow-two" aria-hidden="true"></div>
@@ -216,26 +215,26 @@
         <div id="welcome-confetti-layer" class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true"></div>
         <section class="welcome-card relative z-[2] max-w-lg rounded-[2rem] p-6 text-center sm:p-9">
             <div class="welcome-copy">
-                <div class="mx-auto mb-5 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl border border-amber-200/30 bg-gradient-to-br from-amber-300 via-orange-400 to-fuchsia-500 text-4xl shadow-lg shadow-orange-500/20" aria-hidden="true">
+                <div class="mx-auto mb-5 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-100 via-violet-100 to-pink-100 text-4xl shadow-lg shadow-indigo-200/50" aria-hidden="true">
                     <span class="drop-shadow">🧹</span>
                 </div>
-                <p class="mb-2 text-[11px] font-black uppercase tracking-[.28em] text-amber-200">Reto del Hogar</p>
+                <p class="mb-2 text-[11px] font-black uppercase tracking-[.28em] text-indigo-700">Reto del Hogar</p>
                 <h1 id="welcome-title" class="welcome-title text-3xl font-black leading-tight sm:text-4xl">
                     ¡Hoy puedes con todo!
                 </h1>
-                <p id="welcome-description" class="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-slate-300 sm:text-base">
-                    Tu reto se renueva cada día con hasta <strong class="text-amber-200">10 tareas distintas</strong>, asignadas automáticamente para ti.
+                <p id="welcome-description" class="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-slate-600 sm:text-base">
+                    Tu reto se renueva cada día con hasta <strong class="text-indigo-700">10 tareas distintas</strong>, asignadas automáticamente para ti.
                 </p>
                 <div class="welcome-bonus my-6 rounded-2xl p-4 sm:p-5">
                     <div class="flex items-center justify-center gap-3">
                         <span class="text-3xl drop-shadow-[0_0_12px_rgba(250,204,21,.7)]" aria-hidden="true">⭐</span>
-                        <p class="text-lg font-black text-amber-100 sm:text-xl">Bono de 500 puntos</p>
+                        <p class="text-lg font-black text-indigo-800 sm:text-xl">Bono de 500 puntos</p>
                     </div>
-                    <p class="mt-2 text-xs leading-relaxed text-slate-200 sm:text-sm">Completa todas las tareas de tu cuota diaria y el bono se acreditará automáticamente.</p>
+                    <p class="mt-2 text-xs leading-relaxed text-slate-700 sm:text-sm">Completa todas las tareas de tu cuota diaria y el bono se acreditará automáticamente.</p>
                 </div>
-                <p class="mb-5 text-xs font-semibold tracking-wide text-cyan-200">Un paso a la vez. ¡Tu hogar y tu racha te lo agradecerán!</p>
+                <p class="mb-5 text-xs font-semibold tracking-wide text-sky-700">Un paso a la vez. ¡Tu hogar y tu racha te lo agradecerán!</p>
             </div>
-            <button id="welcome-start" type="button" class="welcome-start-button w-full rounded-xl px-5 py-3.5 text-base font-black tracking-wide text-slate-950 transition duration-200 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-amber-200 focus:ring-offset-2 focus:ring-offset-slate-900 sm:text-lg">
+            <button id="welcome-start" type="button" class="welcome-start-button w-full rounded-xl px-5 py-3.5 text-base font-black tracking-wide text-white transition duration-200 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 focus:ring-offset-white sm:text-lg">
                 <span class="relative z-[1]">Comenzar Reto <span aria-hidden="true">→</span></span>
             </button>
         </section>
@@ -245,29 +244,29 @@
     <div id="task-celebration-layer" class="pointer-events-none fixed inset-0 z-[90] overflow-hidden" aria-hidden="true"></div>
     <p id="task-celebration-status" class="sr-only" role="status" aria-live="polite"></p>
 
-    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700 relative">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-indigo-100/50 p-6 border border-indigo-100 relative">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-amber-400">🧹 Reto del Hogar <span id="app-env-badge" class="ml-2 text-[10px] bg-slate-700 text-amber-100 px-2 py-0.5 rounded-full font-normal hidden"></span></h1>
+            <h1 class="text-2xl font-bold text-indigo-700">🧹 Reto del Hogar <span id="app-env-badge" class="ml-2 text-[10px] bg-slate-100 text-indigo-800 px-2 py-0.5 rounded-full font-normal hidden"></span></h1>
             <div class="flex items-center gap-2">
-                <button id="music-toggle" type="button" aria-label="Activar música de fondo" aria-pressed="false" onclick="toggleBackgroundMusic()" class="rounded-lg border border-slate-600 bg-slate-700 px-2.5 py-1 text-[10px] font-semibold text-amber-200 transition hover:border-amber-400 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-400">
+                <button id="music-toggle" type="button" aria-label="Activar música de fondo" aria-pressed="false" onclick="toggleBackgroundMusic()" class="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold text-indigo-700 transition hover:border-indigo-400 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-400">
                     <span id="music-toggle-icon" aria-hidden="true">♫</span>
                     <span id="music-toggle-label">Música: apagada</span>
                 </button>
-                <a href="/admin/login" target="_blank" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg text-slate-300 font-medium transition">Panel Admin</a>
+                <a href="/admin/login" target="_blank" class="text-[10px] bg-slate-100 hover:bg-indigo-100 px-2.5 py-1 rounded-lg text-slate-700 font-medium transition">Panel Admin</a>
             </div>
         </div>
         
         <!-- Pestañas -->
-        <div class="flex rounded-lg bg-slate-700 p-1 mb-6">
-            <button onclick="switchTab('task')" id="btn-task" class="flex-1 py-2 rounded-md font-medium text-sm transition text-slate-300">⚡ Tarea</button>
-            <button onclick="switchTab('podium')" id="btn-podium" class="flex-1 py-2 rounded-md font-medium text-sm transition bg-amber-500 text-slate-900 shadow">🏆 Podio en Vivo</button>
+        <div class="flex rounded-lg bg-indigo-50 p-1 mb-6">
+            <button onclick="switchTab('task')" id="btn-task" class="flex-1 py-2 rounded-md font-medium text-sm transition text-slate-600 hover:bg-white">⚡ Tarea</button>
+            <button onclick="switchTab('podium')" id="btn-podium" class="flex-1 py-2 rounded-md font-medium text-sm transition bg-indigo-600 text-white shadow">🏆 Podio en Vivo</button>
         </div>
 
         <!-- Sección Tarea -->
         <div id="section-task" class="space-y-4 hidden">
             <div>
-                <label class="block text-sm font-medium mb-1 text-slate-300">Integrante:</label>
-                <select id="user_name" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-amber-500">
+                <label class="block text-sm font-medium mb-1 text-slate-700">Integrante:</label>
+                <select id="user_name" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:border-indigo-500 focus:bg-white">
                     <option value="Jaiver Martínez" data-user-id="jaiver-martinez">Jaiver Martínez (Administrador)</option>
                     <option value="Gabriela Martínez" data-user-id="gabriela-martinez">Gabriela Martínez</option>
                     <option value="Valeria Martínez" data-user-id="valeria-martinez">Valeria Martínez</option>
@@ -276,92 +275,92 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium mb-1 text-slate-300">Seleccionar Tarea:</label>
-                <select id="task_name" disabled class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-amber-500">
+                <label class="block text-sm font-medium mb-1 text-slate-700">Seleccionar Tarea:</label>
+                <select id="task_name" disabled class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:border-indigo-500 focus:bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed">
                     <option value="">Cargando tareas del día...</option>
                 </select>
-                <p id="daily-task-status" class="mt-1 text-xs text-slate-400" aria-live="polite">Cargando cuota diaria...</p>
+                <p id="daily-task-status" class="mt-1 text-xs text-slate-600" aria-live="polite">Cargando cuota diaria...</p>
             </div>
 
             <!-- Botón de Solicitud de Plata Directa -->
             <div class="pt-2">
-                <button onclick="openMoneyModal()" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 rounded-lg transition shadow-lg text-sm flex items-center justify-center gap-2">
+                <button onclick="openMoneyModal()" class="w-full bg-sky-700 hover:bg-sky-800 text-white font-bold py-2.5 rounded-lg transition shadow-lg text-sm flex items-center justify-center gap-2">
                     💰 Solicitar Plata
                 </button>
             </div>
 
             <!-- Paso 1: Foto Inicial -->
             <div id="step-1" class="space-y-3 pt-2">
-                <label class="block text-sm font-medium text-amber-300">📸 Paso 1: Foto ANTES de empezar</label>
-                <input type="file" id="before_photo" accept="image/*" capture="environment" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-500 file:text-slate-900 hover:file:bg-amber-600">
-                <button onclick="startTask()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-3 rounded-lg transition shadow-lg">Iniciar Tarea</button>
+                <label class="block text-sm font-medium text-slate-700">📸 Paso 1: Foto ANTES de empezar</label>
+                <input type="file" id="before_photo" accept="image/*" capture="environment" class="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700">
+                <button onclick="startTask()" class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-200 disabled:text-indigo-900 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg transition shadow-lg">Iniciar Tarea</button>
             </div>
 
             <!-- Paso 2: Foto Final -->
             <div id="step-2" class="space-y-3 pt-2 hidden">
-                <div class="p-3 bg-slate-900 rounded-lg border border-amber-500/30 text-sm text-amber-300 text-center">
+                <div class="p-3 bg-indigo-50 rounded-lg border border-indigo-200 text-sm text-indigo-800 text-center">
                     ⏱️ Tarea en curso... Realiza la labor y toma la foto final.
                 </div>
-                <label class="block text-sm font-medium text-amber-300">🏁 Paso 2: Foto DESPUÉS de terminar</label>
-                <input type="file" id="after_photo" accept="image/*" capture="environment" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-500 file:text-slate-900 hover:file:bg-emerald-600">
-                <button id="btn-finish-task" onclick="finishTask()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold py-3 rounded-lg transition shadow-lg">Finalizar y Calificar con IA</button>
+                <label class="block text-sm font-medium text-slate-700">🏁 Paso 2: Foto DESPUÉS de terminar</label>
+                <input type="file" id="after_photo" accept="image/*" capture="environment" class="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-700 file:text-white hover:file:bg-emerald-800">
+                <button id="btn-finish-task" onclick="finishTask()" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 rounded-lg transition shadow-lg disabled:bg-emerald-100 disabled:text-emerald-900 disabled:cursor-not-allowed">Finalizar y Calificar con IA</button>
             </div>
 
             <!-- Indicador Visual de Carga / Progreso -->
-            <div id="loading-box" class="hidden mt-6 p-5 bg-slate-900 rounded-xl border border-amber-500/40 text-center space-y-4 shadow-lg">
-                <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-amber-500 border-t-transparent"></div>
+            <div id="loading-box" class="hidden mt-6 p-5 bg-slate-50 rounded-xl border border-indigo-200 text-center space-y-4 shadow-lg">
+                <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-indigo-500 border-t-transparent"></div>
                 <div class="space-y-1">
-                    <p id="loading-status-text" class="font-bold text-amber-400 text-sm">Comprimiendo evidencias...</p>
-                    <p class="text-xs text-slate-400">Por favor no cierres la ventana mientras la IA evalúa tu esfuerzo.</p>
+                    <p id="loading-status-text" class="font-bold text-indigo-700 text-sm">Comprimiendo evidencias...</p>
+                    <p class="text-xs text-slate-600">Por favor no cierres la ventana mientras la IA evalúa tu esfuerzo.</p>
                 </div>
-                <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                    <div id="progress-bar" class="bg-amber-500 h-2.5 rounded-full transition-all duration-500 w-1/4"></div>
+                <div class="w-full bg-indigo-100 rounded-full h-2.5 overflow-hidden">
+                    <div id="progress-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500 w-1/4"></div>
                 </div>
             </div>
 
             <!-- Resultado de la IA -->
-            <div id="result-box" class="hidden mt-6 p-4 bg-slate-900 rounded-xl border border-slate-700 space-y-2">
-                <h3 class="font-bold text-amber-400 text-lg">⚖️ Veredicto de la IA</h3>
+            <div id="result-box" class="hidden mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <h3 class="font-bold text-indigo-700 text-lg">⚖️ Veredicto de la IA</h3>
                 <p id="res-user" class="text-sm"></p>
                 <p id="res-duration" class="text-sm"></p>
-                <p id="res-model" class="text-xs font-mono text-cyan-400"></p>
+                <p id="res-model" class="text-xs font-mono text-sky-700"></p>
                 <p id="res-status" class="text-sm font-semibold"></p>
-                <p id="res-points" class="text-sm font-bold text-amber-300"></p>
-                <p id="res-obs" class="text-xs text-slate-300 italic bg-slate-800 p-2 rounded"></p>
+                <p id="res-points" class="text-sm font-bold text-indigo-700"></p>
+                <p id="res-obs" class="text-xs text-slate-700 italic bg-white p-2 rounded"></p>
                 <div class="flex gap-2 pt-2">
-                    <a id="link-before" href="#" target="_blank" class="flex-1 text-center bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded transition">Ver Inicio</a>
-                    <a id="link-after" href="#" target="_blank" class="flex-1 text-center bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded transition">Ver Final</a>
+                    <a id="link-before" href="#" target="_blank" class="flex-1 text-center bg-indigo-100 hover:bg-indigo-200 text-indigo-800 text-xs py-2 rounded transition">Ver Inicio</a>
+                    <a id="link-after" href="#" target="_blank" class="flex-1 text-center bg-indigo-100 hover:bg-indigo-200 text-indigo-800 text-xs py-2 rounded transition">Ver Final</a>
                 </div>
-                <button onclick="resetApp()" class="w-full mt-2 bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded transition">Hacer otra tarea</button>
+                <button onclick="resetApp()" class="w-full mt-2 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs py-2 rounded transition">Hacer otra tarea</button>
             </div>
         </div>
 
         <!-- Sección Podio Real -->
         <div id="section-podium" class="space-y-4">
             <div class="flex justify-center gap-2 mb-4">
-                <button onclick="loadLeaderboard('hoy')" id="p-hoy" class="px-3 py-1 bg-slate-700 text-slate-300 text-xs rounded-full">Hoy</button>
-                <button onclick="loadLeaderboard('semana')" id="p-semana" class="px-3 py-1 bg-amber-500 text-slate-900 font-bold text-xs rounded-full shadow">Esta Semana</button>
-                <button onclick="loadLeaderboard('mes')" id="p-mes" class="px-3 py-1 bg-slate-700 text-slate-300 text-xs rounded-full">Este Mes</button>
+                <button onclick="loadLeaderboard('hoy')" id="p-hoy" class="px-3 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-700 text-xs rounded-full">Hoy</button>
+                <button onclick="loadLeaderboard('semana')" id="p-semana" class="px-3 py-1 bg-indigo-600 text-white font-bold text-xs rounded-full shadow">Esta Semana</button>
+                <button onclick="loadLeaderboard('mes')" id="p-mes" class="px-3 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-700 text-xs rounded-full">Este Mes</button>
             </div>
 
             <!-- Tarjeta de Reto Grupal con Mensaje Explicativo -->
-            <div id="group-challenge-card" class="bg-gradient-to-r from-amber-500/10 to-slate-900 border border-amber-500/40 rounded-2xl p-4 space-y-2 mb-4 shadow-md">
+            <div id="group-challenge-card" class="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border border-indigo-200 rounded-2xl p-4 space-y-2 mb-4 shadow-md">
                 <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">🤝 Reto Grupal Semanal</span>
-                    <span id="group-challenge-points" class="text-xs font-extrabold text-amber-300">0 / 9,000 pts</span>
+                    <span class="text-xs font-bold text-indigo-800 uppercase tracking-wider">🤝 Reto Grupal Semanal</span>
+                    <span id="group-challenge-points" class="text-xs font-extrabold text-indigo-800">0 / 9,000 pts</span>
                 </div>
                 <!-- Barra de Progreso Grupal -->
-                <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-                    <div id="group-progress-bar" class="bg-amber-500 h-2 rounded-full transition-all duration-500" style="width: 0%;"></div>
+                <div class="w-full bg-white/80 rounded-full h-2 overflow-hidden">
+                    <div id="group-progress-bar" class="bg-indigo-600 h-2 rounded-full transition-all duration-500" style="width: 0%;"></div>
                 </div>
-                <p class="text-[11px] text-slate-300 leading-tight">
-                    💡 <strong class="text-amber-300">¿Qué pasa si lo logramos?</strong> Al alcanzar la meta conjunta de la familia antes de finalizar la semana, <span class="text-amber-200">se desbloquea una recompensa en equipo</span> (como una salida especial o una cena en conjunto).
+                <p class="text-[11px] text-slate-700 leading-tight">
+                    💡 <strong class="text-indigo-800">¿Qué pasa si lo logramos?</strong> Al alcanzar la meta conjunta de la familia antes de finalizar la semana, <span class="text-violet-800">se desbloquea una recompensa en equipo</span> (como una salida especial o una cena en conjunto).
                 </p>
             </div>
 
             <!-- Botón Mostrar todos los participantes -->
             <div class="flex justify-end mb-2">
-                <button onclick="toggleShowAll()" id="btn-toggle-all" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 font-bold px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow">
+                <button onclick="toggleShowAll()" id="btn-toggle-all" class="bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow">
                     👥 <span id="btn-toggle-all-text">mostrar todos</span>
                 </button>
             </div>
@@ -373,80 +372,80 @@
     </div>
 
     <!-- Modal de Detalle de Tareas del Usuario -->
-    <div id="modal-detalle" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-700 w-full max-w-lg rounded-2xl p-5 shadow-2xl max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center mb-3 border-b border-slate-700 pb-3">
-                <h2 id="modal-title" class="text-lg font-bold text-amber-400">Detalle de Tareas</h2>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+    <div id="modal-detalle" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 text-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-200 pb-3">
+                <h2 id="modal-title" class="text-lg font-bold text-indigo-700">Detalle de Tareas</h2>
+                <button onclick="closeModal()" class="text-slate-500 hover:text-slate-900 text-xl font-bold px-2">&times;</button>
             </div>
             
             <div class="mb-3">
-                <input type="text" id="filter-tasks" oninput="filterUserTasks()" placeholder="🔍 Buscar por nombre de tarea..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+                <input type="text" id="filter-tasks" oninput="filterUserTasks()" placeholder="🔍 Buscar por nombre de tarea..." class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 focus:bg-white">
             </div>
 
             <div id="modal-body" class="overflow-y-auto space-y-4 pr-1 flex-1">
                 <!-- Tarjetas de tareas individuales -->
             </div>
-            <button onclick="closeModal()" class="mt-4 w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium py-2.5 rounded-xl text-sm transition">Cerrar</button>
+            <button onclick="closeModal()" class="mt-4 w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium py-2.5 rounded-xl text-sm transition">Cerrar</button>
         </div>
     </div>
 
     <!-- Modal de Solicitar Plata (Ingreso de Monto) -->
-    <div id="modal-money" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-                <h2 class="text-lg font-bold text-cyan-400">💰 Solicitar Plata</h2>
-                <button onclick="closeMoneyModal()" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+    <div id="modal-money" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 text-slate-800 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                <h2 class="text-lg font-bold text-sky-700">💰 Solicitar Plata</h2>
+                <button onclick="closeMoneyModal()" class="text-slate-500 hover:text-slate-900 text-xl font-bold px-2">&times;</button>
             </div>
             <div>
-                <label class="block text-xs text-slate-300 mb-1">¿Cuánto deseas solicitar?</label>
-                <input type="number" id="money-amount" placeholder="Ej: 10000" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-100 text-sm focus:outline-none focus:border-cyan-500">
+                <label class="block text-xs text-slate-700 mb-1">¿Cuánto deseas solicitar?</label>
+                <input type="number" id="money-amount" placeholder="Ej: 10000" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-800 text-sm focus:outline-none focus:border-indigo-500 focus:bg-white">
             </div>
-            <div id="money-response" class="hidden p-3 bg-slate-900 rounded-lg text-xs text-slate-200 border border-slate-700"></div>
+            <div id="money-response" class="hidden p-3 bg-slate-50 rounded-lg text-xs text-slate-800 border border-slate-200"></div>
             <div class="flex gap-2 pt-2">
-                <button onclick="closeMoneyModal()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2.5 rounded-xl font-medium transition text-slate-200">Cerrar</button>
-                <button id="btn-validate-money" onclick="validateAndRequestMoney()" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white text-xs py-2.5 rounded-xl font-bold transition shadow">Solicitar</button>
+                <button onclick="closeMoneyModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-xs py-2.5 rounded-xl font-medium transition text-slate-800">Cerrar</button>
+                <button id="btn-validate-money" onclick="validateAndRequestMoney()" class="flex-1 bg-sky-700 hover:bg-sky-800 disabled:bg-sky-100 disabled:text-sky-900 disabled:cursor-not-allowed text-white text-xs py-2.5 rounded-xl font-bold transition shadow">Solicitar</button>
             </div>
         </div>
     </div>
 
     <!-- Modal de Confirmación -->
-    <div id="modal-money-confirm" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
+    <div id="modal-money-confirm" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 text-slate-800 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
             <div class="text-3xl">❓</div>
-            <h3 class="text-lg font-bold text-cyan-400">Confirmar Solicitud</h3>
-            <div id="modal-money-confirm-details" class="text-sm text-slate-200 leading-relaxed bg-slate-900 p-3 rounded-xl border border-slate-700 space-y-1 text-left">
+            <h3 class="text-lg font-bold text-sky-700">Confirmar Solicitud</h3>
+            <div id="modal-money-confirm-details" class="text-sm text-slate-800 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1 text-left">
                 <!-- Detalle insertado dinámicamente -->
             </div>
-            <p class="text-xs text-slate-400">¿Desea proceder con esta solicitud?</p>
+            <p class="text-xs text-slate-600">¿Desea proceder con esta solicitud?</p>
             <div class="flex gap-2 pt-2">
-                <button onclick="cancelMoneyConfirmation()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2.5 rounded-xl font-medium transition text-slate-200">Cancelar</button>
-                <button id="btn-confirm-money" onclick="executeMoneyRequest()" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white text-xs py-2.5 rounded-xl font-bold transition shadow">Aceptar</button>
+                <button onclick="cancelMoneyConfirmation()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-xs py-2.5 rounded-xl font-medium transition text-slate-800">Cancelar</button>
+                <button id="btn-confirm-money" onclick="executeMoneyRequest()" class="flex-1 bg-sky-700 hover:bg-sky-800 disabled:bg-sky-100 disabled:text-sky-900 disabled:cursor-not-allowed text-white text-xs py-2.5 rounded-xl font-bold transition shadow">Aceptar</button>
             </div>
         </div>
     </div>
 
     <!-- Modal Secundario: Solicitud Cancelada -->
-    <div id="modal-money-cancel" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
+    <div id="modal-money-cancel" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 text-slate-800 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
             <div class="text-3xl">ℹ️</div>
-            <h3 class="text-base font-bold text-slate-200">Solicitud Cancelada</h3>
-            <p class="text-sm text-slate-300 leading-relaxed">Usted ha cancelado su solicitud de dinero</p>
-            <button onclick="closeMoneyCancelModal()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 font-bold py-2.5 rounded-xl transition shadow text-xs">
+            <h3 class="text-base font-bold text-slate-800">Solicitud Cancelada</h3>
+            <p class="text-sm text-slate-700 leading-relaxed">Usted ha cancelado su solicitud de dinero</p>
+            <button onclick="closeMoneyCancelModal()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition shadow text-xs">
                 Aceptar
             </button>
         </div>
     </div>
 
     <!-- Modal Secundario: Solicitud Exitosa / Aprobada -->
-    <div id="modal-money-success" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-emerald-500/40 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
+    <div id="modal-money-success" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white border border-emerald-200 text-slate-800 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-center">
             <div class="text-3xl">🎉</div>
-            <h3 class="text-base font-bold text-emerald-400">Solicitud Enviada</h3>
-            <p id="modal-money-success-text" class="text-sm text-slate-200 font-medium leading-relaxed">
+            <h3 class="text-base font-bold text-emerald-700">Solicitud Enviada</h3>
+            <p id="modal-money-success-text" class="text-sm text-slate-700 font-medium leading-relaxed">
                 ¡Felicitaciones, su solicitud es viable, debe esperar a que se apruebe el desembolso del dinero
             </p>
-            <button onclick="closeMoneySuccessModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition shadow text-xs">
+            <button onclick="closeMoneySuccessModal()" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 rounded-xl transition shadow text-xs">
                 Aceptar
             </button>
         </div>
@@ -792,13 +791,13 @@
             if(tab === 'task') {
                 document.getElementById('section-task').classList.remove('hidden');
                 document.getElementById('section-podium').classList.add('hidden');
-                document.getElementById('btn-task').className = "flex-1 py-2 rounded-md font-medium text-sm transition bg-amber-500 text-slate-900 shadow";
-                document.getElementById('btn-podium').className = "flex-1 py-2 rounded-md font-medium text-sm transition text-slate-300";
+                document.getElementById('btn-task').className = "flex-1 py-2 rounded-md font-medium text-sm transition bg-indigo-600 text-white shadow";
+                document.getElementById('btn-podium').className = "flex-1 py-2 rounded-md font-medium text-sm transition text-slate-600 hover:bg-white";
             } else {
                 document.getElementById('section-task').classList.add('hidden');
                 document.getElementById('section-podium').classList.remove('hidden');
-                document.getElementById('btn-podium').className = "flex-1 py-2 rounded-md font-medium text-sm transition bg-amber-500 text-slate-900 shadow";
-                document.getElementById('btn-task').className = "flex-1 py-2 rounded-md font-medium text-sm transition text-slate-300";
+                document.getElementById('btn-podium').className = "flex-1 py-2 rounded-md font-medium text-sm transition bg-indigo-600 text-white shadow";
+                document.getElementById('btn-task').className = "flex-1 py-2 rounded-md font-medium text-sm transition text-slate-600 hover:bg-white";
                 globalPeriodo = periodo;
                 loadLeaderboard(periodo);
             }
@@ -832,7 +831,7 @@
 
             if(!amountVal || parseFloat(amountVal) <= 0) {
                 responseBox.classList.remove('hidden');
-                responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Error:</span> Por favor ingresa un monto válido mayor a cero.`;
+                responseBox.innerHTML = `<span class="text-red-700 font-bold">❌ Error:</span> Por favor ingresa un monto válido mayor a cero.`;
                 return;
             }
 
@@ -865,7 +864,7 @@
                     document.getElementById('modal-money-confirm-details').innerHTML = detailsHtml;
                     document.getElementById('modal-money-confirm').classList.remove('hidden');
                 } else {
-                    responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Rechazado:</span> ${data.message}`;
+                    responseBox.innerHTML = `<span class="text-red-700 font-bold">❌ Rechazado:</span> ${data.message}`;
                 }
             } catch(e) {
                 if(validateBtn) validateBtn.disabled = false;
@@ -873,7 +872,7 @@
                 if (e instanceof TypeError || (e.message && e.message.includes('Failed to fetch'))) {
                     errText = "Error de conexión (Failed to fetch). Verifica tu internet e intentalo de nuevo.";
                 }
-                responseBox.innerHTML = `<span class="text-red-400 font-bold">❌ Error:</span> ${errText}`;
+                responseBox.innerHTML = `<span class="text-red-700 font-bold">❌ Error:</span> ${errText}`;
             }
         }
 
@@ -1097,9 +1096,9 @@
             ['hoy', 'semana', 'mes'].forEach(p => {
                 const b = document.getElementById('p-' + p);
                 if(p === periodo) {
-                    b.className = "px-3 py-1 bg-amber-500 text-slate-900 font-bold text-xs rounded-full shadow";
+                    b.className = "px-3 py-1 bg-indigo-600 text-white font-bold text-xs rounded-full shadow";
                 } else {
-                    b.className = "px-3 py-1 bg-slate-700 text-slate-300 text-xs rounded-full";
+                    b.className = "px-3 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-700 text-xs rounded-full";
                 }
             });
 
@@ -1149,15 +1148,15 @@
                     const rest = visible.slice(3);
 
                     html += `
-                        <div onclick="openDetail('${first[0]}')" class="bg-gradient-to-b from-amber-500/20 to-slate-900 border-2 border-amber-500 rounded-2xl p-4 text-center shadow-lg relative overflow-hidden mb-3 cursor-pointer hover:border-amber-400 transition">
+                        <div onclick="openDetail('${first[0]}')" class="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-4 text-center shadow-lg relative overflow-hidden mb-3 cursor-pointer hover:border-amber-400 transition">
                             <div class="absolute top-2 right-3 text-2xl">👑</div>
                             <span class="text-3xl">🥇</span>
-                            <h2 class="text-lg font-extrabold text-amber-400 mt-1">${first[0]}</h2>
-                            <p class="text-xs text-slate-300 mb-2">${first[1].tareas} tareas completadas</p>
-                            <div class="inline-block bg-amber-500 text-slate-900 font-black px-4 py-1 rounded-full text-sm shadow">
+                            <h2 class="text-lg font-extrabold text-indigo-900 mt-1">${first[0]}</h2>
+                            <p class="text-xs text-slate-700 mb-2">${first[1].tareas} tareas completadas</p>
+                            <div class="inline-block bg-indigo-600 text-white font-black px-4 py-1 rounded-full text-sm shadow">
                                 ${first[1].puntos} pts
                             </div>
-                            <p class="text-[10px] text-amber-300/70 mt-2 underline">Toca para ver desglose de tareas</p>
+                            <p class="text-[10px] text-indigo-800 mt-2 underline">Toca para ver desglose de tareas</p>
                         </div>
                     `;
 
@@ -1166,24 +1165,24 @@
                         
                         if(second) {
                             html += `
-                                <div onclick="openDetail('${second[0]}')" class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-center cursor-pointer hover:border-slate-500 transition">
+                                <div onclick="openDetail('${second[0]}')" class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center cursor-pointer hover:border-indigo-300 transition">
                                     <span class="text-2xl">🥈</span>
-                                    <p class="font-bold text-sm text-slate-200 truncate mt-1">${second[0]}</p>
-                                    <p class="text-[10px] text-slate-400">${second[1].tareas} tareas</p>
-                                    <p class="text-amber-300 font-extrabold text-sm mt-1">${second[1].puntos} pts</p>
-                                    <p class="text-[9px] text-slate-400 mt-1 underline">Ver tareas</p>
+                                    <p class="font-bold text-sm text-slate-800 truncate mt-1">${second[0]}</p>
+                                    <p class="text-[10px] text-slate-600">${second[1].tareas} tareas</p>
+                                    <p class="text-indigo-700 font-extrabold text-sm mt-1">${second[1].puntos} pts</p>
+                                    <p class="text-[9px] text-slate-600 mt-1 underline">Ver tareas</p>
                                 </div>
                             `;
                         }
                         
                         if(third) {
                             html += `
-                                <div onclick="openDetail('${third[0]}')" class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-center cursor-pointer hover:border-slate-500 transition">
+                                <div onclick="openDetail('${third[0]}')" class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center cursor-pointer hover:border-indigo-300 transition">
                                     <span class="text-2xl">🥉</span>
-                                    <p class="font-bold text-sm text-slate-200 truncate mt-1">${third[0]}</p>
-                                    <p class="text-[10px] text-slate-400">${third[1].tareas} tareas</p>
-                                    <p class="text-amber-300 font-extrabold text-sm mt-1">${third[1].puntos} pts</p>
-                                    <p class="text-[9px] text-slate-400 mt-1 underline">Ver tareas</p>
+                                    <p class="font-bold text-sm text-slate-800 truncate mt-1">${third[0]}</p>
+                                    <p class="text-[10px] text-slate-600">${third[1].tareas} tareas</p>
+                                    <p class="text-indigo-700 font-extrabold text-sm mt-1">${third[1].puntos} pts</p>
+                                    <p class="text-[9px] text-slate-600 mt-1 underline">Ver tareas</p>
                                 </div>
                             `;
                         }
@@ -1194,13 +1193,13 @@
                     rest.forEach(([name, info], index) => {
                         let rank = index + 4;
                         html += `
-                            <div onclick="openDetail('${name}')" class="flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-800 text-sm cursor-pointer hover:border-slate-600 transition">
+                            <div onclick="openDetail('${name}')" class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 text-sm cursor-pointer hover:border-indigo-300 transition">
                                 <div class="flex items-center gap-2">
-                                    <span class="font-bold text-slate-400 text-xs">#${rank}</span>
-                                    <span class="font-semibold text-slate-300">${name}</span>
+                                    <span class="font-bold text-slate-600 text-xs">#${rank}</span>
+                                    <span class="font-semibold text-slate-800">${name}</span>
                                 </div>
                                 <div class="text-right">
-                                    <span class="font-bold text-amber-400">${info.puntos} pts</span>
+                                    <span class="font-bold text-indigo-700">${info.puntos} pts</span>
                                 </div>
                             </div>
                         `;
@@ -1210,14 +1209,14 @@
                 document.getElementById('podium-content').innerHTML = html;
             } catch(e) {
                 console.error("Error cargando podio:", e);
-                document.getElementById('podium-content').innerHTML = `<p class="text-center text-red-400 text-xs py-4">📡 Error al cargar la clasificación. Revisa tu conexión.</p>`;
+                document.getElementById('podium-content').innerHTML = `<p class="text-center text-red-700 text-xs py-4">📡 Error al cargar la clasificación. Revisa tu conexión.</p>`;
             }
         }
 
         async function openDetail(userName) {
             document.getElementById('modal-title').innerText = `Tareas de ${userName}`;
             document.getElementById('filter-tasks').value = "";
-            document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">Cargando tareas...</p>`;
+            document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-600 py-4">Cargando tareas...</p>`;
             document.getElementById('modal-detalle').classList.remove('hidden');
 
             try {
@@ -1230,14 +1229,14 @@
                 allUserTasks = await res.json();
 
                 if(!Array.isArray(allUserTasks) || allUserTasks.length === 0) {
-                    document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">No hay tareas registradas en este período.</p>`;
+                    document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-600 py-4">No hay tareas registradas en este período.</p>`;
                     return;
                 }
 
                 renderTaskList(allUserTasks);
             } catch(e) {
                 console.error(e);
-                document.getElementById('modal-body').innerHTML = `<p class="text-center text-red-400 py-4">Error de conexión al cargar el detalle de tareas.</p>`;
+                document.getElementById('modal-body').innerHTML = `<p class="text-center text-red-700 py-4">Error de conexión al cargar el detalle de tareas.</p>`;
             }
         }
 
@@ -1245,22 +1244,22 @@
             let html = "";
             tasks.forEach((t) => {
                 html += `
-                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-3.5 space-y-2 text-xs">
-                        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                            <span class="font-bold text-amber-400 text-sm">${t.task_name}</span>
-                            <span class="bg-amber-500/10 text-amber-300 font-semibold px-2 py-0.5 rounded">${t.puntos} pts</span>
+                    <div class="bg-white border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs">
+                        <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                            <span class="font-bold text-indigo-700 text-sm">${t.task_name}</span>
+                            <span class="bg-indigo-100 text-indigo-800 font-semibold px-2 py-0.5 rounded">${t.puntos} pts</span>
                         </div>
-                        <div class="text-slate-400 flex justify-between">
+                        <div class="text-slate-600 flex justify-between">
                             <span>📅 ${t.fecha}</span>
                             <span>⏱️ ${t.duracion} min</span>
                         </div>
-                        <div class="bg-slate-800/60 p-2 rounded space-y-1">
-                            <span class="text-amber-300 font-semibold block">📝 Observaciones:</span>
-                            <p class="text-slate-300 italic">${t.observaciones || 'Sin observaciones'}</p>
+                        <div class="bg-slate-50 p-2 rounded space-y-1">
+                            <span class="text-indigo-800 font-semibold block">📝 Observaciones:</span>
+                            <p class="text-slate-700 italic">${t.observaciones || 'Sin observaciones'}</p>
                         </div>
                         <div class="grid grid-cols-2 gap-2 pt-1">
-                            <a href="${t.before_url}" target="_blank" class="block text-center bg-slate-800 hover:bg-slate-700 text-amber-300 py-2 rounded-lg font-medium transition border border-slate-700">📸 Ver Antes</a>
-                            <a href="${t.after_url}" target="_blank" class="block text-center bg-slate-800 hover:bg-slate-700 text-emerald-300 py-2 rounded-lg font-medium transition border border-slate-700">🏁 Ver Después</a>
+                            <a href="${t.before_url}" target="_blank" class="block text-center bg-indigo-50 hover:bg-indigo-100 text-indigo-800 py-2 rounded-lg font-medium transition border border-indigo-200">📸 Ver Antes</a>
+                            <a href="${t.after_url}" target="_blank" class="block text-center bg-emerald-50 hover:bg-emerald-100 text-emerald-800 py-2 rounded-lg font-medium transition border border-emerald-200">🏁 Ver Después</a>
                         </div>
                     </div>
                 `;
@@ -1276,7 +1275,7 @@
             );
 
             if(filtered.length === 0) {
-                document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-400 py-4">No se encontraron tareas que coincidan con la búsqueda.</p>`;
+                document.getElementById('modal-body').innerHTML = `<p class="text-center text-slate-600 py-4">No se encontraron tareas que coincidan con la búsqueda.</p>`;
             } else {
                 renderTaskList(filtered);
             }
@@ -1288,5 +1287,5 @@
 
         switchTab('podium', 'semana');
     </script>
-<script>async function loadEnv(){try{const res=await fetch("/api/env");const data=await res.json();const badge=document.getElementById("app-env-badge");if(data.APP_ENV){badge.textContent=data.APP_ENV;badge.classList.remove("hidden");if(data.APP_ENV.toLowerCase()==="producci�n"){badge.classList.add("bg-emerald-700");badge.classList.remove("bg-slate-700");}}}catch(e){console.error("Error loading env:", e);}} document.addEventListener("DOMContentLoaded", loadEnv);</script></body>
+<script>async function loadEnv(){try{const res=await fetch("/api/env");const data=await res.json();const badge=document.getElementById("app-env-badge");if(data.APP_ENV){badge.textContent=data.APP_ENV;badge.classList.remove("hidden");if(data.APP_ENV.toLowerCase()==="producci�n"){badge.classList.add("bg-emerald-100","text-emerald-800");badge.classList.remove("bg-slate-100","text-indigo-800");}}}catch(e){console.error("Error loading env:", e);}} document.addEventListener("DOMContentLoaded", loadEnv);</script></body>
 </html>

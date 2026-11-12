@@ -576,32 +576,32 @@ async def admin_solicitudes_view(request: Request, admin_user: str = Cookie(None
         <title>Panel de Administración - Reto del Hogar</title>
         <script src="https://cdn.tailwindcss.com"></script>
     </head>
-    <body class="bg-slate-900 text-slate-100 min-h-screen p-6">
+    <body class="bg-gradient-to-br from-sky-50 via-indigo-50 to-purple-50 text-slate-800 min-h-screen p-6">
         <div class="max-w-4xl mx-auto space-y-6">
-            <div class="flex justify-between items-center border-b border-slate-700 pb-4">
-                <h1 class="text-2xl font-bold text-amber-400">🛡️ Panel de Administración - Aprobación de Solicitudes</h1>
-                <a href="/" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-xs">Volver al Inicio</a>
+            <div class="flex justify-between items-center border-b border-indigo-200 pb-4">
+                <h1 class="text-2xl font-bold text-indigo-700">🛡️ Panel de Administración - Aprobación de Solicitudes</h1>
+                <a href="/" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs">Volver al Inicio</a>
             </div>
             
-            <div class="bg-slate-800 rounded-2xl p-5 border border-slate-700 shadow-xl space-y-4">
-                <h2 class="text-lg font-bold text-cyan-400">Solitudes de Dinero Pendientes</h2>
+            <div class="bg-white rounded-2xl p-5 border border-indigo-100 shadow-xl shadow-indigo-100/50 space-y-4">
+                <h2 class="text-lg font-bold text-sky-700">Solitudes de Dinero Pendientes</h2>
     """
 
     if not solicitudes_pendientes:
-        html_content += '<p class="text-slate-400 text-sm py-4">No hay solicitudes pendientes de aprobación en este momento.</p>'
+        html_content += '<p class="text-slate-600 text-sm py-4">No hay solicitudes pendientes de aprobación en este momento.</p>'
     else:
         html_content += '<div class="space-y-3">'
         for sol in solicitudes_pendientes:
             html_content += f"""
-                <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                        <div class="font-bold text-amber-300 text-base">{sol['usuario']}</div>
-                        <div class="text-xs text-slate-300">{sol['detalle']}</div>
-                        <div class="text-[10px] text-slate-500 mt-1">📅 {sol['fecha']}</div>
+                        <div class="font-bold text-indigo-800 text-base">{sol['usuario']}</div>
+                        <div class="text-xs text-slate-700">{sol['detalle']}</div>
+                        <div class="text-[10px] text-slate-600 mt-1">📅 {sol['fecha']}</div>
                     </div>
                     <div class="flex gap-2 w-full sm:w-auto">
-                        <button onclick="procesarSolicitud({sol['row_index']}, 'aprobar')" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg text-xs transition">Aprobar</button>
-                        <button onclick="procesarSolicitud({sol['row_index']}, 'rechazar')" class="flex-1 sm:flex-none bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-lg text-xs transition">Rechazar</button>
+                        <button onclick="procesarSolicitud({sol['row_index']}, 'aprobar')" class="flex-1 sm:flex-none bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-4 py-2 rounded-lg text-xs transition">Aprobar</button>
+                        <button onclick="procesarSolicitud({sol['row_index']}, 'rechazar')" class="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition">Rechazar</button>
                     </div>
                 </div>
             """
