@@ -6,6 +6,7 @@
     <title>Reto del Hogar</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <style>
         @keyframes welcome-backdrop-in {
             from { opacity: 0; }
@@ -181,6 +182,15 @@
             animation: task-star-burst 1.25s cubic-bezier(.12, .72, .24, 1) var(--star-delay) both;
         }
 
+        #task-celebration-layer {
+            z-index: 2147483647;
+        }
+
+        .welcome-title {
+            color: #fff7cc;
+            text-shadow: 0 2px 3px #020617, 0 0 10px rgba(2, 6, 23, .95);
+        }
+
         @media (prefers-reduced-motion: reduce) {
             .welcome-overlay,
             .welcome-glow,
@@ -210,7 +220,7 @@
                     <span class="drop-shadow">🧹</span>
                 </div>
                 <p class="mb-2 text-[11px] font-black uppercase tracking-[.28em] text-amber-200">Reto del Hogar</p>
-                <h1 id="welcome-title" class="bg-gradient-to-r from-amber-200 via-white to-fuchsia-200 bg-clip-text text-3xl font-black leading-tight text-transparent sm:text-4xl">
+                <h1 id="welcome-title" class="welcome-title text-3xl font-black leading-tight sm:text-4xl">
                     ¡Hoy puedes con todo!
                 </h1>
                 <p id="welcome-description" class="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-slate-300 sm:text-base">
@@ -231,6 +241,7 @@
         </section>
     </div>
     <audio id="background-music" loop preload="none" aria-hidden="true"></audio>
+    <audio id="victory-fanfare" src="/assets/victory-fanfare.wav" preload="auto" aria-hidden="true"></audio>
     <div id="task-celebration-layer" class="pointer-events-none fixed inset-0 z-[90] overflow-hidden" aria-hidden="true"></div>
     <p id="task-celebration-status" class="sr-only" role="status" aria-live="polite"></p>
 
@@ -609,10 +620,39 @@
 
             layer.replaceChildren();
             const result = document.getElementById('result-box').getBoundingClientRect();
-            const originX = result.left + result.width / 2;
-            const originY = result.top + Math.min(result.height / 2, 100);
+            const originX = result.width ? result.left + result.width / 2 : window.innerWidth / 2;
+            const originY = result.height ? result.top + Math.min(result.height / 2, 100) : window.innerHeight * .55;
             const colors = ['#fde047', '#fb923c', '#f472b6', '#c084fc', '#38bdf8', '#6ee7b7'];
             const fragment = document.createDocumentFragment();
+
+            if (typeof window.confetti === 'function') {
+                const burst = () => window.confetti({
+                    particleCount: window.innerWidth < 640 ? 90 : 150,
+                    spread: 105,
+                    startVelocity: 58,
+                    gravity: 1.05,
+                    decay: .91,
+                    ticks: 260,
+                    scalar: window.innerWidth < 640 ? .85 : 1,
+                    shapes: ['star', 'square'],
+                    colors,
+                    origin: {
+                        x: Math.max(.05, Math.min(.95, originX / window.innerWidth)),
+                        y: Math.max(.08, Math.min(.88, originY / window.innerHeight))
+                    },
+                    resize: true,
+                    useWorker: false,
+                    zIndex: 2147483647,
+                    disableForReducedMotion: true
+                });
+                burst();
+                let burstsRemaining = 6;
+                const burstTimer = window.setInterval(() => {
+                    burst();
+                    burstsRemaining -= 1;
+                    if (burstsRemaining === 0) window.clearInterval(burstTimer);
+                }, 480);
+            }
 
             for (let index = 0; index < 32; index++) {
                 const star = document.createElement('span');
@@ -633,6 +673,26 @@
 
             layer.appendChild(fragment);
             window.setTimeout(() => layer.replaceChildren(), 1700);
+        }
+
+        async function playVictoryFanfare() {
+            const backgroundAudio = document.getElementById('background-music');
+            const victoryAudio = document.getElementById('victory-fanfare');
+            const resumeBackground = !backgroundAudio.paused;
+
+            if (resumeBackground) backgroundAudio.pause();
+            try {
+                victoryAudio.currentTime = 0;
+                await victoryAudio.play();
+            } catch (error) {
+                console.warn('No se pudo reproducir la fanfarria de victoria:', error);
+                if (resumeBackground) startBackgroundMusic();
+                return;
+            }
+
+            victoryAudio.addEventListener('ended', () => {
+                if (resumeBackground) startBackgroundMusic();
+            }, { once: true });
         }
 
         window.addEventListener('pagehide', () => {
@@ -958,7 +1018,7 @@
                 
                 if(data.status === "success") {
                     if (data.completado === true) {
-                        triggerTaskCelebration();
+                        playVictoryFanfare();
                     }
                     if (data.daily_state) {
                         try {
@@ -973,6 +1033,9 @@
                     setTimeout(() => {
                         loadingBox.classList.add('hidden');
                         document.getElementById('result-box').classList.remove('hidden');
+                        if (data.completado === true) {
+                            triggerTaskCelebration();
+                        }
 
                         document.getElementById('res-user').innerText = `👤 Responsable: ${data.user_name}`;
                         document.getElementById('res-duration').innerText = `⏱️ Duración: ${data.duration_minutes} min`;
